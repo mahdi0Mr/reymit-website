@@ -1,14 +1,14 @@
 import type { Metadata } from 'next'
 import { Vazirmatn } from 'next/font/google'
 import './globals.css'
-// این خط را با دقت بررسی کنید
-import AuthProvider from './components/AuthProvider' // مسیر را چک کنید
+
+// AuthProvider و import آن کاملاً حذف شده است
 
 const vazirmatn = Vazirmatn({ subsets: ['arabic'] })
 
 export const metadata: Metadata = {
   title: 'کنترلر دونیت | Reymit & Donito',
-  description: 'اتوماسیون هوشمند دونیت‌های Reymit و Donito برای استریمرها',
+  description: 'اتوماسون هوشمند دونیت‌های Reymit و Donito برای استریمرها',
 }
 
 export default function RootLayout({
@@ -18,12 +18,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="fa" dir="rtl">
+      {/* تگ body دیگر AuthProvider را ندارد */}
       <body className={`${vazirmatn.className} bg-[#1e1e2e] text-[#cdd6f4]`}>
-        {/* روش صحیح استفاده از کامپوننت */}
-        <AuthProvider>
-          {/* تمام فرزندان باید داخل Provider باشند */}
-          {children} 
-        </AuthProvider>
+        {children}
       </body>
     </html>
   )

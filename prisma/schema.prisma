@@ -1,44 +1,35 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
   provider  = "postgresql"
-  url       = env("POSTGRES_URL") 
+  url       = env("POSTGRES_URL")
   directUrl = env("POSTGRES_URL_NON_POOLING")
 }
 
-model User {
-  id        String    @id @default(cuid())
-  email     String    @unique
-  name      String?
-  isAdmin   Boolean   @default(false)
-  createdAt DateTime  @default(now())
-  tickets   Ticket[]
-}
-
 model Ticket {
-  id        String    @id @default(cuid())
-  title     String
-  content   String    @db.Text
-  status    String    @default("OPEN") // OPEN, ANSWERED, CLOSED
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  userId    String
-  user      User      @relation(fields: [userId], references: [id])
-  replies   TicketReply[]
+  id              String        @id @default(cuid())
+  trackingId      String        @unique @default(uuid())
+  email           String
+  contactInfo     String
+  title           String
+  content         String        @db.Text
+  imageUrl        String?       // [جدید] URL عکس پیوست شده به تیکت اصلی (اختیاری)
+  status          String        @default("OPEN")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  replies         TicketReply[]
 }
 
 model TicketReply {
-  id        String    @id @default(cuid())
-  content   String    @db.Text
-  createdAt DateTime  @default(now())
+  id            String   @id @default(cuid())
+  content       String   @db.Text
+  imageUrl      String?  // [جدید] URL عکس پیوست شده به پاسخ (اختیاری)
+  createdAt     DateTime @default(now())
   authorIsAdmin Boolean
-  ticketId  String
-  ticket    Ticket    @relation(fields: [ticketId], references: [id])
+  ticketId      String
+  ticket        Ticket   @relation(fields: [ticketId], references: [id])
 }
 
 model AppFile {

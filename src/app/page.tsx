@@ -1,8 +1,9 @@
-//src/app/page.tx
-
 import fs from 'fs/promises';
 import path from 'path';
-import { Download, Gem, Link, ShieldCheck, Gamepad2, Palette } from 'lucide-react';
+// آیکون Ticket را اضافه کنید
+import { Download, Gem, Link, ShieldCheck, Gamepad2, Palette, Ticket } from 'lucide-react'; 
+// کامپوننت فرم پیگیری را وارد کنید
+import TrackTicketForm from '@/app/components/TrackTicketForm'; 
 
 // تعریف نوع داده‌ها برای TypeScript
 interface VersionInfo {
@@ -71,9 +72,20 @@ export default async function HomePage() {
             ))}
           </div>
         </section>
+        
+        {/* [جدید] بخش پشتیبانی و تیکتینگ */}
+        <section className="py-16 text-center bg-[#2a2a40] rounded-lg border border-gray-700">
+            <h2 className="text-3xl font-bold text-center mb-4 text-yellow-400">پشتیبانی</h2>
+            <p className="max-w-2xl mx-auto text-lg text-gray-300 mb-6">
+                سوالی دارید یا با مشکلی مواجه شده‌اید؟ تیکت جدید ارسال کنید. اگر قبلا تیکت ارسال کرده‌اید، وضعیت آن را از اینجا پیگیری کنید.
+            </p>
+            <div className="max-w-lg mx-auto">
+                <TrackTicketForm />
+            </div>
+        </section>
 
         {/* Update Info & License Section */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-8 py-8">
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-8 py-16">
           {/* Update Info */}
           <div className="bg-[#2a2a40] p-6 rounded-lg border border-gray-700">
             <h3 className="text-2xl font-bold mb-4 text-green-400">اطلاعات آخرین نسخه</h3>
@@ -86,16 +98,17 @@ export default async function HomePage() {
           
           {/* License & Support */}
           <div className="bg-[#2a2a40] p-6 rounded-lg border border-gray-700 flex flex-col justify-center items-center text-center">
-            <h3 className="text-2xl font-bold mb-4 text-yellow-400">خرید و پشتیبانی</h3>
+            <h3 className="text-2xl font-bold mb-4 text-pink-400">خرید و ارسال تیکت</h3>
             <p className="mb-6">
-              برای استفاده از تمام قابلیت‌ها و حمایت از پروژه، لایسنس معتبر تهیه کنید.
+              برای استفاده از تمام قابلیت‌ها لایسنس تهیه کنید و برای دریافت پشتیبانی تیکت ارسال نمایید.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
                <a href="https://wumpus.ir/shop" target="_blank" className="flex items-center justify-center gap-2 px-6 py-2 bg-pink-500 text-white font-semibold rounded-lg hover:bg-pink-600 transition">
                 <Gem size={18} /> خرید لایسنس
               </a>
-              <a href="https://discord.gg/a8N2jzeUZE" target="_blank" className="flex items-center justify-center gap-2 px-6 py-2 border border-gray-500 text-gray-300 font-semibold rounded-lg hover:bg-gray-700 transition">
-                <Link size={18} /> پشتیبانی در دیسکورد
+              {/* [تغییر] لینک دیسکورد با لینک ارسال تیکت جایگزین شد */}
+              <a href="/support" className="flex items-center justify-center gap-2 px-6 py-2 border border-gray-500 text-gray-300 font-semibold rounded-lg hover:bg-gray-700 transition">
+                <Ticket size={18} /> ارسال تیکت جدید
               </a>
             </div>
           </div>
