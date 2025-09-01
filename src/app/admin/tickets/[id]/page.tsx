@@ -7,7 +7,7 @@ import React from 'react';
 type Params = { id: string };
 
 interface PageProps {
-  params: Promise<Params>; // Next.js 15: params is async
+  params: Promise<Params>; // Next.js 15: params به صورت Promise پاس داده می‌شود
 }
 
 async function getTicketDetails(id: string) {
@@ -22,10 +22,10 @@ async function getTicketDetails(id: string) {
 }
 
 export default async function ViewTicketPage({ params }: PageProps) {
-  // حتماً params را await کن
+  // ⚠️ حتماً params را await کن
   const { id } = await params;
 
-  // اعتبارسنجی id
+  // اعتبارسنجی اولیه id
   if (!id || typeof id !== 'string' || id.trim() === '') {
     return notFound();
   }
@@ -53,6 +53,7 @@ export default async function ViewTicketPage({ params }: PageProps) {
           </p>
         </div>
 
+        {/* بخش نمایش پاسخ‌ها */}
         <div className="space-y-6 mb-8">
           <h2 className="text-2xl font-bold">تاریخچه گفتگو</h2>
 
@@ -82,6 +83,7 @@ export default async function ViewTicketPage({ params }: PageProps) {
           ))}
         </div>
 
+        {/* بخش فرم پاسخ */}
         <ReplyForm ticketId={ticket.id} currentStatus={ticket.status} />
       </div>
     </div>
