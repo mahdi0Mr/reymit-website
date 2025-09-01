@@ -1,32 +1,39 @@
+// src/app/admin/tickets/[id]/page.tsx
 import prisma from '@/lib/prisma';
-import ReplyForm from '../../../components/ReplyForm'; // کامپوننت فرم پاسخ
+import ReplyForm from '../../../components/ReplyForm';
+import { notFound } from 'next/navigation';
+import React from 'react';
 
 type Params = { id: string };
 
-interface ViewTicketPageProps {
-  params: Promise<Params>; // <-- نکته: params به صورت Promise در Next 15 هست
+interface PageProps {
+  params: Promise<Params>; // Next.js 15: params is async
 }
 
 async function getTicketDetails(id: string) {
-  const ticket = await prisma.ticket.findUnique({
+  return prisma.ticket.findUnique({
     where: { id },
     include: {
       replies: {
-        orderBy: {
-          createdAt: 'asc',
-        },
+        orderBy: { createdAt: 'asc' },
       },
     },
   });
-  return ticket;
 }
 
-export default async function ViewTicketPage({ params }: ViewTicketPageProps) {
-  const { id } = await params; // <-- حتما await کن
+export default async function ViewTicketPage({ params }: PageProps) {
+  // حتماً params را await کن
+  const { id } = await params;
+
+  // اعتبارسنجی id
+  if (!id || typeof id !== 'string' || id.trim() === '') {
+    return notFound();
+  }
+
   const ticket = await getTicketDetails(id);
 
   if (!ticket) {
-    return <div className="text-center py-20">تیکت مورد نظر یافت نشد.</div>;
+    return notFound();
   }
 
   return (
@@ -48,6 +55,11 @@ export default async function ViewTicketPage({ params }: ViewTicketPageProps) {
 
         <div className="space-y-6 mb-8">
           <h2 className="text-2xl font-bold">تاریخچه گفتگو</h2>
+
+          {ticket.replies.length === 0 && (
+            <p className="text-gray-500">هنوز پاسخی برای این تیکت ثبت نشده است.</p>
+          )}
+
           {ticket.replies.map((reply) => (
             <div
               key={reply.id}
@@ -58,7 +70,7 @@ export default async function ViewTicketPage({ params }: ViewTicketPageProps) {
               }`}
             >
               <p className={`font-bold mb-2 ${reply.authorIsAdmin ? 'text-sky-400' : 'text-gray-300'}`}>
-                {reply.authorIsAdmin ? 'پاسخ پشتیبانی' : 'پاسخ کاربر (در آینده اضافه شود)'}
+                {reply.authorIsAdmin ? 'پاسخ پشتیبانی' : 'پاسخ کاربر'}
               </p>
               <div className="prose prose-invert max-w-none text-gray-300 whitespace-pre-wrap">
                 {reply.content}
@@ -68,9 +80,6 @@ export default async function ViewTicketPage({ params }: ViewTicketPageProps) {
               </p>
             </div>
           ))}
-          {ticket.replies.length === 0 && (
-            <p className="text-gray-500">هنوز پاسخی برای این تیکت ثبت نشده است.</p>
-          )}
         </div>
 
         <ReplyForm ticketId={ticket.id} currentStatus={ticket.status} />
