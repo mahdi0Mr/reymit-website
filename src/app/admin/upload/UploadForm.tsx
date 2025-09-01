@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { upload } from '@vercel/blob/client';
-import { createAppFile } from '@/app/actions/adminActions'; // Server Action جدید
+import { createAppFile } from '@/app/actions/adminActions';
 
 export default function UploadForm() {
   const inputFileRef = useRef<HTMLInputElement>(null);
@@ -54,8 +54,12 @@ export default function UploadForm() {
         if(inputFileRef.current) inputFileRef.current.value = '';
       }
 
-    } catch (err: any) {
-      setError(`خطا در آپلود: ${err.message}`);
+    } catch (err: unknown) { // [تغییر اصلی] استفاده از unknown به جای any
+      if (err instanceof Error) {
+        setError(`خطا در آپلود: ${err.message}`);
+      } else {
+        setError('یک خطای ناشناخته در هنگام آپلود رخ داد.');
+      }
       setStatus('');
     }
   };
@@ -104,10 +108,10 @@ export default function UploadForm() {
 
       <button 
         type="submit" 
-        disabled={!!status && !error} // دکمه را در حین پردازش غیرفعال کن
+        disabled={!!status && !error}
         className="w-full bg-sky-500 text-white font-bold py-3 rounded-lg hover:bg-sky-600 transition disabled:bg-gray-500 disabled:cursor-not-allowed"
       >
-        {status ? 'در حال پردازش...' : 'آپلود و ثبت نسخه'}
+        {status && !error ? 'در حال پردازش...' : 'آپلود و ثبت نسخه'}
       </button>
     </form>
   );
