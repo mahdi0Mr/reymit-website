@@ -1,21 +1,23 @@
 import prisma from '@/lib/prisma';
-import ReplyForm from '../../../components/ReplyForm'; // کامپوننت فرم پاسخ
+import ReplyForm from '../../../components/ReplyForm';
+
+interface ViewTicketPageProps {
+  params: { id: string };
+}
 
 async function getTicketDetails(id: string) {
   const ticket = await prisma.ticket.findUnique({
     where: { id },
     include: {
       replies: {
-        orderBy: {
-          createdAt: 'asc', // پاسخ‌ها به ترتیب زمانی باشند
-        },
+        orderBy: { createdAt: 'asc' },
       },
     },
   });
   return ticket;
 }
 
-export default async function ViewTicketPage({ params }: { params: { id: string } }) {
+export default async function ViewTicketPage({ params }: ViewTicketPageProps) {
   const ticket = await getTicketDetails(params.id);
 
   if (!ticket) {
@@ -39,7 +41,6 @@ export default async function ViewTicketPage({ params }: { params: { id: string 
           </p>
         </div>
 
-        {/* بخش نمایش پاسخ‌ها */}
         <div className="space-y-6 mb-8">
           <h2 className="text-2xl font-bold">تاریخچه گفتگو</h2>
           {ticket.replies.map((reply) => (
@@ -51,7 +52,7 @@ export default async function ViewTicketPage({ params }: { params: { id: string 
                   : 'bg-gray-700/50'
               }`}
             >
-              <p className="font-bold mb-2 ${reply.authorIsAdmin ? 'text-sky-400' : 'text-gray-300'}">
+              <p className={`font-bold mb-2 ${reply.authorIsAdmin ? 'text-sky-400' : 'text-gray-300'}`}>
                 {reply.authorIsAdmin ? 'پاسخ پشتیبانی' : 'پاسخ کاربر (در آینده اضافه شود)'}
               </p>
               <div className="prose prose-invert max-w-none text-gray-300 whitespace-pre-wrap">
@@ -62,12 +63,11 @@ export default async function ViewTicketPage({ params }: { params: { id: string 
               </p>
             </div>
           ))}
-           {ticket.replies.length === 0 && (
+          {ticket.replies.length === 0 && (
             <p className="text-gray-500">هنوز پاسخی برای این تیکت ثبت نشده است.</p>
-           )}
+          )}
         </div>
 
-        {/* بخش فرم پاسخ */}
         <ReplyForm ticketId={ticket.id} currentStatus={ticket.status} />
       </div>
     </div>
