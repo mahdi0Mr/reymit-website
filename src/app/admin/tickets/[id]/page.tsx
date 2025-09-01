@@ -1,24 +1,19 @@
 import prisma from '@/lib/prisma';
 import ReplyForm from '../../../components/ReplyForm';
 
-interface ViewTicketPageProps {
-  params: { id: string };
-}
+type Params = { id: string }; // پارامترهای URL
 
-async function getTicketDetails(id: string) {
+export default async function ViewTicketPage({
+  params,
+}: {
+  params: Params;
+}) {
   const ticket = await prisma.ticket.findUnique({
-    where: { id },
+    where: { id: params.id },
     include: {
-      replies: {
-        orderBy: { createdAt: 'asc' },
-      },
+      replies: { orderBy: { createdAt: 'asc' } },
     },
   });
-  return ticket;
-}
-
-export default async function ViewTicketPage({ params }: ViewTicketPageProps) {
-  const ticket = await getTicketDetails(params.id);
 
   if (!ticket) {
     return <div className="text-center py-20">تیکت مورد نظر یافت نشد.</div>;
