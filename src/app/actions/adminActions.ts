@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
-import { put } from "@vercel/blob/server";
+import { put } from "@vercel/blob";
 import { timingSafeEqual } from "crypto";
 
 // --- بخش احراز هویت ادمین ---
