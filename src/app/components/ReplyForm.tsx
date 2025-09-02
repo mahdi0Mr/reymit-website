@@ -1,40 +1,45 @@
 "use client";
 
-import { useState } from 'react';
-import { addReplyToTicket } from '@/app/actions/adminActions';
+import { useState } from "react";
+import { addReplyToTicket, type TicketStatus } from "@/app/actions/adminActions";
 
 interface ReplyFormProps {
   ticketId: string;
-  currentStatus: string;
+  currentStatus: TicketStatus;
 }
 
 export default function ReplyForm({ ticketId, currentStatus }: ReplyFormProps) {
-  const [content, setContent] = useState('');
-  const [status, setStatus] = useState(currentStatus);
-  const [message, setMessage] = useState('');
-  const [error, setError] = useState('');
+  const [content, setContent] = useState("");
+  const [status, setStatus] = useState<TicketStatus>(currentStatus);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
-    setMessage('');
+    setError("");
+    setMessage("");
 
-    if (!content) {
-      setError('متن پاسخ نمی‌تواند خالی باشد.');
+    if (!content.trim()) {
+      setError("متن پاسخ نمی‌تواند خالی باشد.");
       return;
     }
 
     try {
-      const result = await addReplyToTicket({ ticketId, content, status });
+      const result = await addReplyToTicket({
+        ticketId,
+        content,
+        status,
+      });
+
       if (result.error) {
         setError(result.error);
       } else {
-        setMessage('پاسخ شما با موفقیت ثبت شد. صفحه به زودی رفرش می‌شود...');
-        setContent('');
+        setMessage("پاسخ شما با موفقیت ثبت شد. صفحه به زودی رفرش می‌شود...");
+        setContent("");
         setTimeout(() => window.location.reload(), 2000);
       }
     } catch (err) {
-      setError('خطایی در سرور رخ داد.');
+      setError("خطایی در سرور رخ داد.");
     }
   };
 
@@ -60,7 +65,7 @@ export default function ReplyForm({ ticketId, currentStatus }: ReplyFormProps) {
         <select
           id="status"
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={(e) => setStatus(e.target.value as TicketStatus)}
           className="w-full bg-[#1e1e2e] border border-gray-600 rounded-md p-2"
         >
           <option value="OPEN">باز</option>
@@ -69,7 +74,10 @@ export default function ReplyForm({ ticketId, currentStatus }: ReplyFormProps) {
         </select>
       </div>
 
-      <button type="submit" className="w-full bg-sky-600 text-white font-bold py-3 rounded-lg hover:bg-sky-700">
+      <button
+        type="submit"
+        className="w-full bg-sky-600 text-white font-bold py-3 rounded-lg hover:bg-sky-700"
+      >
         ارسال پاسخ
       </button>
     </form>

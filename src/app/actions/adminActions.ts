@@ -104,7 +104,7 @@ export async function createAppFile(data: AppFileData, fileBuffer: Buffer) {
 }
 
 // --- بخش مدیریت تیکت‌ها ---
-type TicketStatus = "OPEN" | "CLOSED" | "PENDING";
+ export type TicketStatus = "OPEN" | "CLOSED" | "PENDING";
 
 interface ReplyData {
   ticketId: string;
