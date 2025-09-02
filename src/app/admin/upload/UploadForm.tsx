@@ -28,20 +28,46 @@ export default function UploadForm() {
 
     setStatus("در حال آپلود فایل...");
 
+    // filename امن و یکتا (حذف کاراکترهای مشکل‌ساز)
+    const safeVersion = version.replace(/[^\w.-]/g, "_");
+    const candidateFilename = `ReymitController_v${safeVersion}_${file.name}`;
+
     try {
-      // آپلود فایل مستقیم از کلاینت به Vercel Blob
-      const newBlob = await upload(file.name, file, {
+      // prepare options as any to avoid TS complaining about extra props
+      const opts1: any = {
         access: "public",
-        handleUploadUrl: "/api/admin/upload", // route ای که token تولید می‌کند
-      });
+        handleUploadUrl: "/api/admin/upload",
+        // credentials: "include", // اگر لازم دیدی کوکی‌ها ارسال شوند، این را فعال کن
+        // allowOverwrite: true, // اگر می‌خواهی صریحاً overwrite کنی، می‌توانی این را اضافه کنی
+      };
+
+      let newBlob;
+      try {
+        // تلاش اول با نام مشخص (candidateFilename)
+        newBlob = await upload(candidateFilename, file, opts1);
+      } catch (e: any) {
+        const msg = (e && (e.message || String(e))) || "";
+        // اگر ارور مربوط به وجود blob بود، دوباره با addRandomSuffix تلاش کن
+        if (msg.includes("already exists") || msg.includes("This blob already exists")) {
+          const opts2: any = {
+            access: "public",
+            handleUploadUrl: "/api/admin/upload",
+            allowOverwrite: true, // این را به any می‌دهیم تا TS شکایت نکند
+            // credentials: "include",
+          };
+          newBlob = await upload(file.name, file, opts2);
+        } else {
+          throw e;
+        }
+      }
 
       setStatus("فایل آپلود شد. در حال ذخیره اطلاعات در دیتابیس...");
 
-      // فقط متادیتا را به server action ارسال می‌کنیم
+      // ارسال متادیتا به server action
       const result = await createAppFile({
         version,
         changelog,
-        fileName: file.name,
+        fileName: file.name, // می‌تونی این‌جا candidateFilename یا original name بذاری؛ لینک واقعی newBlob.url در DB ذخیره می‌شود
         url: newBlob.url,
       });
 
