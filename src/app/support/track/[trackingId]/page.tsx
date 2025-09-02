@@ -1,37 +1,18 @@
 import prisma from "@/lib/prisma";
 import Link from "next/link";
 import { ArrowRight, Clock, CheckCircle, XCircle } from "lucide-react";
-import ClientReplyForm from "./ClientReplyForm"; // اطمینان از ایمپورت صحیح
+import ClientReplyForm from "./ClientReplyForm";
 import Image from "next/image";
-
-// تعریف نوع props
-interface PageProps {
-  params: {
-    trackingId: string;
-  };
-}
 
 // تابعی برای دریافت آیکون و رنگ بر اساس وضعیت تیکت
 const getStatusBadge = (status: string) => {
   switch (status) {
     case "OPEN":
-      return {
-        icon: <Clock size={18} />,
-        text: "باز",
-        color: "text-yellow-400",
-      };
+      return { icon: <Clock size={18} />, text: "باز", color: "text-yellow-400" };
     case "ANSWERED":
-      return {
-        icon: <CheckCircle size={18} />,
-        text: "پاسخ داده شده",
-        color: "text-green-400",
-      };
+      return { icon: <CheckCircle size={18} />, text: "پاسخ داده شده", color: "text-green-400" };
     case "CLOSED":
-      return {
-        icon: <XCircle size={18} />,
-        text: "بسته شده",
-        color: "text-red-400",
-      };
+      return { icon: <XCircle size={18} />, text: "بسته شده", color: "text-red-400" };
     default:
       return { icon: null, text: status, color: "text-gray-400" };
   }
@@ -44,17 +25,15 @@ async function getTicketByTrackingId(trackingId: string) {
     where: { trackingId },
     include: {
       replies: {
-        orderBy: {
-          createdAt: "asc",
-        },
+        orderBy: { createdAt: "asc" },
       },
     },
   });
 }
 
-// کامپوننت اصلی صفحه
-export default async function TrackTicketPage({ params }: PageProps) {
-  const trackingId = params.trackingId;
+// 👇 نکته اصلی اینجاست: props.params در Vercel یک Promise هست
+export default async function TrackTicketPage(props: { params: Promise<{ trackingId: string }> }) {
+  const { trackingId } = await props.params; // ✅ await اضافه شد
   const ticket = await getTicketByTrackingId(trackingId);
 
   if (!ticket) {
@@ -63,8 +42,7 @@ export default async function TrackTicketPage({ params }: PageProps) {
         <div className="max-w-md mx-auto bg-[#2a2a40] p-8 rounded-lg border border-gray-700">
           <h1 className="text-2xl mb-4 font-bold text-red-400">تیکت یافت نشد</h1>
           <p className="text-gray-400 mb-6">
-            تیکتی با این کد پیگیری یافت نشد. لطفا کد را بررسی کرده و دوباره
-            تلاش کنید.
+            تیکتی با این کد پیگیری یافت نشد. لطفا کد را بررسی کرده و دوباره تلاش کنید.
           </p>
           <Link
             href="/"
@@ -79,7 +57,6 @@ export default async function TrackTicketPage({ params }: PageProps) {
 
   const badge = getStatusBadge(ticket.status);
 
-  // ساخت آرایه پیام‌ها با در نظر گرفتن imageUrl
   const messages = [
     {
       type: "user",
@@ -95,10 +72,7 @@ export default async function TrackTicketPage({ params }: PageProps) {
       imageUrl: r.imageUrl,
       id: r.id,
     })),
-  ].sort(
-    (a, b) =>
-      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-  );
+  ].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
 
   return (
     <main className="container mx-auto px-4 py-12">
@@ -117,9 +91,7 @@ export default async function TrackTicketPage({ params }: PageProps) {
         <div className="bg-[#2a2a40] p-8 rounded-lg border border-gray-700">
           <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-4">
             <h2 className="text-2xl font-bold">{ticket.title}</h2>
-            <div
-              className={`flex items-center gap-2 font-semibold p-2 rounded-md bg-gray-900/50 ${badge.color}`}
-            >
+            <div className={`flex items-center gap-2 font-semibold p-2 rounded-md bg-gray-900/50 ${badge.color}`}>
               {badge.icon}
               <span>وضعیت: {badge.text}</span>
             </div>
@@ -146,9 +118,7 @@ export default async function TrackTicketPage({ params }: PageProps) {
               >
                 <p
                   className={`font-bold mb-2 ${
-                    message.type === "admin"
-                      ? "text-sky-400"
-                      : "text-gray-300"
+                    message.type === "admin" ? "text-sky-400" : "text-gray-300"
                   }`}
                 >
                   {message.type === "admin" ? "پاسخ پشتیبانی" : "پیام شما"}
@@ -173,18 +143,14 @@ export default async function TrackTicketPage({ params }: PageProps) {
                 )}
 
                 <p className="text-xs text-gray-500 mt-2 text-left">
-                  ارسال شده در{" "}
-                  {new Date(message.createdAt).toLocaleString("fa-IR")}
+                  ارسال شده در {new Date(message.createdAt).toLocaleString("fa-IR")}
                 </p>
               </div>
             ))}
           </div>
 
           {ticket.status !== "CLOSED" ? (
-            <ClientReplyForm
-              ticketId={ticket.id}
-              trackingId={ticket.trackingId}
-            />
+            <ClientReplyForm ticketId={ticket.id} trackingId={ticket.trackingId} />
           ) : (
             <div className="mt-8 text-center bg-red-900/50 p-4 rounded-lg border border-red-700">
               <p className="font-bold text-red-400">
