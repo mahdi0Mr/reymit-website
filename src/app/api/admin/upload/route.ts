@@ -12,7 +12,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       // این تابع قبل از تولید توکن آپلود اجرا می‌شود
       onBeforeGenerateToken: async (pathname: string) => {
         // چک کردن کوکی ادمین برای امنیت
-        const cookieStore = cookies();
+        const cookieStore = await cookies(); // 👈 حتماً await اضافه شد
         const isAdmin = cookieStore.get('admin-auth')?.value === 'true';
 
         if (!isAdmin) {
@@ -20,10 +20,9 @@ export async function POST(request: Request): Promise<NextResponse> {
         }
 
         return {
-          // می‌توانید اینجا محدودیت‌های دیگری هم اضافه کنید
-          // مثلاً حداکثر حجم فایل (به بایت)
-          // maximumBlobSize: 10 * 1024 * 1024, // 10MB
+          // محدودیت‌های آپلود
           allowedContentTypes: ['application/zip', 'application/x-zip-compressed'],
+          // maximumBlobSize: 10 * 1024 * 1024, // 10MB اگر لازم است
         };
       },
       // این تابع بعد از اتمام آپلود اجرا می‌شود
