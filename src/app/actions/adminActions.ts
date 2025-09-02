@@ -102,7 +102,7 @@ export async function createAppFile(data: AppFileData) {
         {
           access: "public",
           handleUploadUrl: "/api/admin/upload",
-          // @ts-ignore
+          // @ts-expect-error
           allowOverwrite: true,
         }
       );
