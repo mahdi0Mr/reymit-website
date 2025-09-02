@@ -128,6 +128,100 @@ export async function createAppFile(data: AppFileData) {
   }
 }
 
+
+// --- گرفتن آخرین نسخه ---
+export async function getLastAppFile() {
+  try {
+    const lastFile = await prisma.appFile.findFirst({
+      orderBy: { releaseDate: "desc" },
+    });
+    return lastFile;
+  } catch (error) {
+    console.error("Error fetching last app file:", error);
+    return null;
+  }
+}
+
+// --- آپدیت نسخه موجود ---
+interface UpdateAppFileData {
+  version: string;
+  changelog: string;
+  fileName: string;
+  url: string;
+}
+
+export async function updateAppFile(data: UpdateAppFileData) {
+  try {
+    const existing = await prisma.appFile.findUnique({
+      where: { version: data.version },
+    });
+
+    if (!existing) {
+      return { error: `نسخه ${data.version} پیدا نشد.` };
+    }
+
+    await prisma.appFile.update({
+      where: { version: data.version },
+      data: {
+        changelog: data.changelog,
+        fileName: data.fileName,
+        url: data.url,
+      },
+    });
+
+    // تبدیل changelog به آرایه
+    const changelogArray: string[] = (() => {
+      if (!data.changelog) return [];
+      try {
+        const parsed = JSON.parse(data.changelog);
+        if (Array.isArray(parsed)) return parsed.map(String);
+      } catch (error) {
+        console.error("Error parsing changelog:", error);
+      }
+      return data.changelog
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    })();
+
+    const versionObj = {
+      latest_version: data.version,
+      release_date: new Date().toLocaleDateString("fa-IR"),
+      download_url: data.url,
+      changelog: changelogArray,
+    };
+
+    const versionJsonStr = JSON.stringify(versionObj, null, 2);
+
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (token) {
+      try {
+        await upload(
+          "version.json",
+          new Blob([versionJsonStr], { type: "application/json" }),
+          {
+            access: "public",
+            handleUploadUrl: "/api/admin/upload",
+            // @ts-expect-error
+            allowOverwrite: true,
+          }
+        );
+        console.log("version.json بعد از ویرایش آپلود شد.");
+      } catch (uploadErr) {
+        console.error("خطا در آپلود version.json:", uploadErr);
+      }
+    }
+
+    revalidatePath("/");
+    revalidatePath("/download");
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error updating app file:", error);
+    return { error: "خطایی در هنگام آپدیت نسخه رخ داد." };
+  }
+}
+
 // --- بخش مدیریت تیکت‌ها ---
 
 interface ReplyData {
