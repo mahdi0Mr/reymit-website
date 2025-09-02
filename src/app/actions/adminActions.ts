@@ -66,7 +66,6 @@ async function uploadVersionJson(version: string, changelog: string, url: string
       {
         access: "public",
         contentType: "application/json",
-        // @ts-ignore: allowOverwrite exists but TS شاید تایید نکند
         allowOverwrite: true,
       }
     );
