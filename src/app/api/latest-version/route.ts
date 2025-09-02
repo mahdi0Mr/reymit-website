@@ -31,10 +31,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      latest_version: latestApp.version,
-      release_date: new Date(latestApp.releaseDate).toLocaleDateString("fa-IR"),
-      download_url: downloadUrl,
-      changelog: changelogArray,
+      latest_version: latestApp.version + " \n",
+      release_date: new Date(latestApp.releaseDate).toLocaleDateString("fa-IR") + " \n",
+      download_url: downloadUrl + " \n",
+      changelog: changelogArray+ " \n",
     });
   } catch (err) {
     console.error("Error fetching latest version:", err);
