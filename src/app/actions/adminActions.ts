@@ -73,8 +73,10 @@ export async function createAppFile(data: AppFileData) {
       try {
         const parsed = JSON.parse(data.changelog);
         if (Array.isArray(parsed)) return parsed.map(String);
-      } catch (_) {
-        // not JSON -> treat as newline separated
+      } catch (err) {
+        // changelog قابل parse نبود — رفتار منطقی ادامه می‌یابد
+        // در صورت نیاز برای دیباگ می‌توانید لاگ کنید:
+        console.debug("changelog is not JSON:", err);
       }
       return data.changelog.split("\n").map((s) => s.trim()).filter(Boolean);
     })();
@@ -146,9 +148,9 @@ export async function addReplyToTicket(data: ReplyData) {
       });
     });
 
-    const ticket = await prisma.ticket.findUnique({ 
-      where: { id: data.ticketId }, 
-      select: { trackingId: true } 
+    const ticket = await prisma.ticket.findUnique({
+      where: { id: data.ticketId },
+      select: { trackingId: true }
     });
 
     revalidatePath("/admin/tickets");

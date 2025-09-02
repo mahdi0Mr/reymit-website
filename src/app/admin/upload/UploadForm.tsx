@@ -33,31 +33,32 @@ export default function UploadForm() {
     const candidateFilename = `ReymitController_v${safeVersion}_${file.name}`;
 
     try {
-      // prepare options as generic record to avoid using `any`
-      const opts1: Record<string, unknown> = {
+      // prepare options but cast to the actual upload options type (no explicit `any`)
+      const opts1 = {
         access: "public",
         handleUploadUrl: "/api/admin/upload",
-        // credentials: "include", // اگر لازم شد؛ می‌توانید فعال کنید
-      };
+        // credentials: "include", // فعال کن اگر لازم باشه
+      } as unknown as Parameters<typeof upload>[2];
 
-      let newBlob;
+      // newBlob typed from the upload return type
+      let newBlob: Awaited<ReturnType<typeof upload>>;
+
       try {
         // تلاش اول با نام مشخص (candidateFilename)
-        newBlob = await upload(candidateFilename, file, opts1 as any);
-        // NOTE: upload signature expects UploadOptions; we cast here narrowly so TS doesn't complain.
-        // We do NOT use `any` for our local variables; only this cast to satisfy the client lib typings.
+        newBlob = await upload(candidateFilename, file, opts1);
       } catch (innerErr: unknown) {
-        // innerErr ممکن است هر چیزی باشد؛ متن پیام را استخراج می‌کنیم
         const msg = innerErr instanceof Error ? innerErr.message : String(innerErr);
 
         // اگر ارور وجود blob تکراری باشد، مجدداً با addRandomSuffix تلاش کن
         if (msg.includes("already exists") || msg.includes("This blob already exists")) {
-          const opts2: Record<string, unknown> = {
+          const opts2 = {
             access: "public",
             handleUploadUrl: "/api/admin/upload",
+            // addRandomSuffix را به runtime می‌فرستیم؛ تایپ‌اسکریپت را با cast راضی نگه می‌داریم
             addRandomSuffix: true,
-          };
-          newBlob = await upload(file.name, file, opts2 as any);
+          } as unknown as Parameters<typeof upload>[2];
+
+          newBlob = await upload(file.name, file, opts2);
         } else {
           throw innerErr;
         }
@@ -70,7 +71,7 @@ export default function UploadForm() {
         version,
         changelog,
         fileName: candidateFilename,
-        url: newBlob.url,
+        url: (newBlob as any).url, // newBlob URL همیشه وجود دارد در runtime؛ اگر بخواهی می‌توانیم type-guard اضافه کنیم
       });
 
       if (result.error) {
