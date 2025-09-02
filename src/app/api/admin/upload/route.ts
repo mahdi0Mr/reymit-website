@@ -9,31 +9,28 @@ export async function POST(request: Request): Promise<NextResponse> {
     const jsonResponse = await handleUpload({
       body,
       request,
-      // این تابع قبل از تولید توکن آپلود اجرا می‌شود
-      onBeforeGenerateToken: async (pathname: string) => {
-        // چک کردن کوکی ادمین برای امنیت
-        const cookieStore = await cookies(); // 👈 حتماً await اضافه شد
+      onBeforeGenerateToken: async () => {
+        const cookieStore = await cookies();
         const isAdmin = cookieStore.get('admin-auth')?.value === 'true';
 
         if (!isAdmin) {
+          console.error('دسترسی غیرمجاز: کوکی admin-auth موجود نیست یا اشتباه است.');
           throw new Error('دسترسی غیرمجاز');
         }
 
         return {
-          // محدودیت‌های آپلود
           allowedContentTypes: ['application/zip', 'application/x-zip-compressed'],
-          // maximumBlobSize: 10 * 1024 * 1024, // 10MB اگر لازم است
         };
       },
-      // این تابع بعد از اتمام آپلود اجرا می‌شود
-      onUploadCompleted: async ({ blob, tokenPayload }) => {
-        console.log('فایل با موفقیت در Vercel Blob آپلود شد:', blob.url);
+      onUploadCompleted: async ({ blob }) => {
+        console.log('فایل با موفقیت آپلود شد:', blob.url);
       },
     });
 
     return NextResponse.json(jsonResponse);
   } catch (error) {
-    const message = (error as Error).message;
+    console.error('خطا در آپلود:', error);
+    const message = (error as Error).message || 'خطای نامعلوم';
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
