@@ -4,12 +4,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
-import fs from "fs";
-import path from "path";
+import { put } from "@vercel/blob/client"; // بدون تایپ PutBlobResult
 import { timingSafeEqual } from "crypto";
-
-// مسیر ذخیره فایل‌ها روی سرور
-const UPLOAD_DIR = path.join(process.cwd(), "public", "downloads");
 
 // --- بخش احراز هویت ادمین ---
 export async function authenticateAdmin(prevState: string | undefined, formData: FormData) {
@@ -42,15 +38,16 @@ export async function adminLogout() {
   redirect("/secret-admin-login");
 }
 
-// --- بخش مدیریت فایل برنامه ---
-interface AppFileData {
+// --- بخش مدیریت فایل برنامه
+
+export interface AppFileData {
   version: string;
-  changelog: string;
+  changelog: string; // می‌تواند JSON array یا متن چندخط باشد
   fileName: string;
-  url: string; // لینک دانلود نهایی
+  url: string; // لینک blob که کلاینت بعد از upload دریافت می‌کند
 }
 
-export async function createAppFile(data: AppFileData, fileBuffer: Buffer) {
+export async function createAppFile(data: AppFileData) {
   try {
     const existingVersion = await prisma.appFile.findUnique({
       where: { version: data.version },
@@ -60,39 +57,58 @@ export async function createAppFile(data: AppFileData, fileBuffer: Buffer) {
       return { error: `نسخه ${data.version} قبلاً ثبت شده است.` };
     }
 
-    // ذخیره فایل روی سرور
-    if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-    const filePath = path.join(UPLOAD_DIR, data.fileName);
-    fs.writeFileSync(filePath, fileBuffer);
-
+    // 1) ذخیرهٔ رکورد در دیتابیس
     await prisma.appFile.create({
       data: {
         version: data.version,
         changelog: data.changelog,
         fileName: data.fileName,
-        url: `/downloads/${data.fileName}`,
+        url: data.url,
       },
     });
 
-    // بروزرسانی version.json
+    // 2) آماده‌سازی changelog به صورت آرایه
     const changelogArray: string[] = (() => {
       if (!data.changelog) return [];
       try {
         const parsed = JSON.parse(data.changelog);
         if (Array.isArray(parsed)) return parsed.map(String);
-      } catch (_) {}
+      } catch (_) {
+        // not JSON -> treat as newline separated
+      }
       return data.changelog.split("\n").map((s) => s.trim()).filter(Boolean);
     })();
 
-    const versionJsonPath = path.join(UPLOAD_DIR, "version.json");
-    const versionData = {
+    // 3) ساخت JSON نسخه
+    const versionJsonStr = JSON.stringify({
       latest_version: data.version,
       release_date: new Date().toLocaleDateString("fa-IR"),
-      download_url: `/downloads/${data.fileName}`,
+      download_url: data.url,
       changelog: changelogArray,
-    };
-    fs.writeFileSync(versionJsonPath, JSON.stringify(versionData, null, 2));
+    }, null, 2);
 
+    // 4) آپلود version.json به Vercel Blob (server-side put)
+    //     - از handleUpload (client) برای فایل اصلی استفاده شده است (کلاینت).
+    //     - اینجا برای version.json از put استفاده می‌کنیم و allowOverwrite را فعال می‌کنیم.
+    try {
+      await put(
+        "version.json",
+        new Blob([versionJsonStr], { type: "application/json" }),
+        {
+          access: "public",
+          // @ts-expect-error: allowOverwrite هنوز ممکن است در تایپ رسمی تعریف نشده باشد
+          allowOverwrite: true,
+        }
+      );
+    } catch (putErr) {
+      console.error("خطا در آپلود version.json به Blob:", putErr);
+      // با وجود خطای put، رکورد DB ذخیره شده است؛ می‌توانیم هشدار برگردانیم
+      revalidatePath("/");
+      revalidatePath("/download");
+      return { success: true, warning: "رکورد ذخیره شد اما آپلود version.json ناموفق بود." };
+    }
+
+    // 5) ری‌والید صفحات
     revalidatePath("/");
     revalidatePath("/download");
 
@@ -103,8 +119,9 @@ export async function createAppFile(data: AppFileData, fileBuffer: Buffer) {
   }
 }
 
+
 // --- بخش مدیریت تیکت‌ها ---
- export type TicketStatus = "OPEN" | "CLOSED" | "PENDING";
+export type TicketStatus = "OPEN" | "CLOSED" | "PENDING";
 
 interface ReplyData {
   ticketId: string;

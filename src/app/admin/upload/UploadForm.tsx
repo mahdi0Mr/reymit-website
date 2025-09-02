@@ -1,71 +1,66 @@
 "use client";
 
-import { useState, useRef } from 'react';
-import { upload } from '@vercel/blob/client';
-import { createAppFile } from '@/app/actions/adminActions';
+import { useState, useRef } from "react";
+import { upload } from "@vercel/blob/client";
+import { createAppFile } from "@/app/actions/adminActions";
 
 export default function UploadForm() {
   const inputFileRef = useRef<HTMLInputElement>(null);
-  const [version, setVersion] = useState('');
-  const [changelog, setChangelog] = useState('');
-  const [status, setStatus] = useState('');
-  const [error, setError] = useState('');
+  const [version, setVersion] = useState("");
+  const [changelog, setChangelog] = useState("");
+  const [status, setStatus] = useState("");
+  const [error, setError] = useState("");
 
-const handleSubmit = async (event: React.FormEvent) => {
-  event.preventDefault();
-  setError('');
-  setStatus('');
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setStatus("");
 
-  const file = inputFileRef.current?.files?.[0];
-  if (!file) {
-    setError('لطفا یک فایل را برای آپلود انتخاب کنید.');
-    return;
-  }
-  if (!version || !changelog) {
-    setError('لطفا فیلدهای نسخه و تغییرات را پر کنید.');
-    return;
-  }
+    const file = inputFileRef.current?.files?.[0];
+    if (!file) {
+      setError("لطفا یک فایل را برای آپلود انتخاب کنید.");
+      return;
+    }
+    if (!version || !changelog) {
+      setError("لطفا فیلدهای نسخه و تغییرات را پر کنید.");
+      return;
+    }
 
-  setStatus('در حال آپلود فایل...');
+    setStatus("در حال آپلود فایل...");
 
-  try {
-    // تبدیل فایل به ArrayBuffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
+    try {
+      // آپلود فایل مستقیم از کلاینت به Vercel Blob
+      const newBlob = await upload(file.name, file, {
+        access: "public",
+        handleUploadUrl: "/api/admin/upload", // route ای که token تولید می‌کند
+      });
 
-    setStatus('در حال ذخیره اطلاعات در دیتابیس...');
+      setStatus("فایل آپلود شد. در حال ذخیره اطلاعات در دیتابیس...");
 
-    const result = await createAppFile(
-      {
+      // فقط متادیتا را به server action ارسال می‌کنیم
+      const result = await createAppFile({
         version,
         changelog,
         fileName: file.name,
-        url: `/downloads/${file.name}`, // لینک نهایی روی سرور
-      },
-      buffer
-    );
+        url: newBlob.url,
+      });
 
-    if (result.error) {
-      setError(result.error);
-      setStatus('');
-    } else {
-      setStatus('نسخه جدید با موفقیت ثبت شد!');
-      // ریست کردن فرم
-      setVersion('');
-      setChangelog('');
-      if (inputFileRef.current) inputFileRef.current.value = '';
+      if (result.error) {
+        setError(result.error);
+        setStatus("");
+      } else {
+        setStatus("نسخه جدید با موفقیت ثبت شد!");
+        setVersion("");
+        setChangelog("");
+        if (inputFileRef.current) inputFileRef.current.value = "";
+      }
+    } catch (err: unknown) {
+      console.error("Upload error:", err);
+      if (err instanceof Error) setError(`خطا در آپلود: ${err.message}`);
+      else setError("یک خطای ناشناخته در هنگام آپلود رخ داد.");
+      setStatus("");
     }
-
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      setError(`خطا در آپلود: ${err.message}`);
-    } else {
-      setError('یک خطای ناشناخته در هنگام آپلود رخ داد.');
-    }
-    setStatus('');
-  }
-};
-
+  };
 
   return (
     <form onSubmit={handleSubmit} className="bg-[#2a2a40] p-8 rounded-lg border border-gray-700 space-y-6 max-w-2xl mx-auto">
@@ -74,47 +69,47 @@ const handleSubmit = async (event: React.FormEvent) => {
 
       <div>
         <label htmlFor="file" className="block mb-2 font-bold text-gray-300">فایل برنامه (.zip)</label>
-        <input 
-          type="file" 
-          id="file" 
-          ref={inputFileRef} 
-          className="w-full text-gray-300 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-violet-50 file:text-violet-700 hover:file:bg-violet-100" 
+        <input
+          type="file"
+          id="file"
+          ref={inputFileRef}
           accept=".zip"
-          required 
+          required
+          className="w-full"
         />
       </div>
 
       <div>
         <label htmlFor="version" className="block mb-2 font-bold text-gray-300">شماره نسخه (مثلا 5.6)</label>
-        <input 
-          type="text" 
-          id="version" 
-          value={version} 
-          onChange={e => setVersion(e.target.value)} 
-          className="w-full bg-[#1e1e2e] border border-gray-600 rounded-md p-2 focus:ring-sky-500 focus:border-sky-500" 
-          required 
-        />
-      </div>
-      
-      <div>
-        <label htmlFor="changelog" className="block mb-2 font-bold text-gray-300">تغییرات جدید (Changelog)</label>
-        <textarea 
-          id="changelog" 
-          value={changelog} 
-          onChange={e => setChangelog(e.target.value)} 
-          rows={8} 
-          className="w-full bg-[#1e1e2e] border border-gray-600 rounded-md p-2 focus:ring-sky-500 focus:border-sky-500" 
-          placeholder="هر تغییر را در یک خط جدید بنویسید..."
-          required 
+        <input
+          type="text"
+          id="version"
+          value={version}
+          onChange={(e) => setVersion(e.target.value)}
+          required
+          className="w-full bg-[#1e1e2e] border border-gray-600 rounded-md p-2"
         />
       </div>
 
-      <button 
-        type="submit" 
+      <div>
+        <label htmlFor="changelog" className="block mb-2 font-bold text-gray-300">تغییرات جدید (Changelog)</label>
+        <textarea
+          id="changelog"
+          value={changelog}
+          onChange={(e) => setChangelog(e.target.value)}
+          rows={8}
+          required
+          className="w-full bg-[#1e1e2e] border border-gray-600 rounded-md p-2"
+          placeholder="هر تغییر را در یک خط جدید بنویسید..."
+        />
+      </div>
+
+      <button
+        type="submit"
         disabled={!!status && !error}
         className="w-full bg-sky-500 text-white font-bold py-3 rounded-lg hover:bg-sky-600 transition disabled:bg-gray-500 disabled:cursor-not-allowed"
       >
-        {status && !error ? 'در حال پردازش...' : 'آپلود و ثبت نسخه'}
+        {status && !error ? "در حال پردازش..." : "آپلود و ثبت نسخه"}
       </button>
     </form>
   );

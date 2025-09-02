@@ -4,8 +4,14 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 export async function POST(request: Request): Promise<NextResponse> {
-  // request.json() returns the payload that the client-side upload helper sends
-  const body = (await request.json()) as HandleUploadBody;
+  let body: HandleUploadBody;
+
+  try {
+    body = (await request.json()) as HandleUploadBody;
+  } catch (err) {
+    console.error("خطا در خواندن JSON درخواست:", err);
+    return NextResponse.json({ error: "فرمت درخواست نامعتبر است." }, { status: 400 });
+  }
 
   try {
     const jsonResponse = await handleUpload({
@@ -25,15 +31,15 @@ export async function POST(request: Request): Promise<NextResponse> {
         };
       },
       onUploadCompleted: async ({ blob }) => {
-        // اینجا فقط لاگ می‌کنیم؛ کار ذخیره‌ی metadata را در action سروری انجام می‌دهیم
-        console.log('فایل با موفقیت آپلود شد (blob):', blob.url);
+        // blob.url موجود است، اما blob.name ندارد
+        console.log(`فایل با موفقیت آپلود شد: ${blob.url}`);
       },
     });
 
     return NextResponse.json(jsonResponse);
-  } catch (error) {
-    console.error('خطا در آپلود:', error);
-    const message = (error as Error).message || 'خطای نامعلوم';
+  } catch (err) {
+    console.error('خطا در آپلود:', err);
+    const message = err instanceof Error ? err.message : 'خطای نامعلوم';
     return NextResponse.json({ error: message }, { status: 400 });
   }
 }
