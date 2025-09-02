@@ -11,58 +11,61 @@ export default function UploadForm() {
   const [status, setStatus] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault();
-    setError('');
-    setStatus('');
+const handleSubmit = async (event: React.FormEvent) => {
+  event.preventDefault();
+  setError('');
+  setStatus('');
 
-    const file = inputFileRef.current?.files?.[0];
-    if (!file) {
-      setError('لطفا یک فایل را برای آپلود انتخاب کنید.');
-      return;
-    }
-    if (!version || !changelog) {
-      setError('لطفا فیلدهای نسخه و تغییرات را پر کنید.');
-      return;
-    }
+  const file = inputFileRef.current?.files?.[0];
+  if (!file) {
+    setError('لطفا یک فایل را برای آپلود انتخاب کنید.');
+    return;
+  }
+  if (!version || !changelog) {
+    setError('لطفا فیلدهای نسخه و تغییرات را پر کنید.');
+    return;
+  }
 
-    setStatus('در حال آپلود فایل...');
+  setStatus('در حال آپلود فایل...');
 
-    try {
-      const newBlob = await upload(file.name, file, {
-        access: 'public',
-        handleUploadUrl: '/api/admin/upload',
-      });
+  try {
+    // تبدیل فایل به ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
 
-      setStatus('فایل آپلود شد. در حال ذخیره اطلاعات در دیتابیس...');
+    setStatus('در حال ذخیره اطلاعات در دیتابیس...');
 
-      const result = await createAppFile({
+    const result = await createAppFile(
+      {
         version,
         changelog,
         fileName: file.name,
-        url: newBlob.url,
-      });
+        url: `/downloads/${file.name}`, // لینک نهایی روی سرور
+      },
+      buffer
+    );
 
-      if (result.error) {
-        setError(result.error);
-        setStatus('');
-      } else {
-        setStatus('نسخه جدید با موفقیت ثبت شد!');
-        // ریست کردن فرم
-        setVersion('');
-        setChangelog('');
-        if(inputFileRef.current) inputFileRef.current.value = '';
-      }
-
-    } catch (err: unknown) { // [تغییر اصلی] استفاده از unknown به جای any
-      if (err instanceof Error) {
-        setError(`خطا در آپلود: ${err.message}`);
-      } else {
-        setError('یک خطای ناشناخته در هنگام آپلود رخ داد.');
-      }
+    if (result.error) {
+      setError(result.error);
       setStatus('');
+    } else {
+      setStatus('نسخه جدید با موفقیت ثبت شد!');
+      // ریست کردن فرم
+      setVersion('');
+      setChangelog('');
+      if (inputFileRef.current) inputFileRef.current.value = '';
     }
-  };
+
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      setError(`خطا در آپلود: ${err.message}`);
+    } else {
+      setError('یک خطای ناشناخته در هنگام آپلود رخ داد.');
+    }
+    setStatus('');
+  }
+};
+
 
   return (
     <form onSubmit={handleSubmit} className="bg-[#2a2a40] p-8 rounded-lg border border-gray-700 space-y-6 max-w-2xl mx-auto">
