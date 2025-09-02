@@ -1,31 +1,33 @@
 "use server";
 
-import { cookies } from 'next/headers';
-import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma"; // Prisma client را import کنید
 
 // --- بخش احراز هویت ادمین ---
 
 export async function authenticateAdmin(prevState: string | undefined, formData: FormData) {
-  const password = formData.get('password') as string;
+  const password = formData.get("password") as string;
   
   if (password === process.env.ADMIN_PASSWORD) {
-    cookies().set('admin-auth', 'true', { 
+    const cookieStore = await cookies(); // 👈 await اضافه شد
+    cookieStore.set("admin-auth", "true", { 
       httpOnly: true, 
-      secure: process.env.NODE_ENV === 'production', 
+      secure: process.env.NODE_ENV === "production", 
       maxAge: 60 * 60 * 24, // 1 روز
-      path: '/' 
+      path: "/" 
     });
-    redirect('/admin');
+    redirect("/admin");
   }
   
   return "رمز عبور نامعتبر است.";
 }
 
 export async function adminLogout() {
-  cookies().delete('admin-auth');
-  redirect('/secret-admin-login');
+  const cookieStore = await cookies(); // 👈 await اضافه شد
+  cookieStore.delete("admin-auth");
+  redirect("/secret-admin-login");
 }
 
 // --- بخش مدیریت فایل برنامه ---
@@ -57,13 +59,13 @@ export async function createAppFile(data: AppFileData) {
     });
 
     // کش صفحه دانلود و صفحه اصلی را به‌روز کن
-    revalidatePath('/');
-    revalidatePath('/download');
+    revalidatePath("/");
+    revalidatePath("/download");
 
     return { success: true };
   } catch (error) {
     console.error("Error creating app file:", error);
-    return { error: 'خطایی در هنگام ذخیره در دیتابیس رخ داد.' };
+    return { error: "خطایی در هنگام ذخیره در دیتابیس رخ داد." };
   }
 }
 
@@ -96,7 +98,7 @@ export async function addReplyToTicket(data: ReplyData) {
     });
     
     // پاک کردن کش صفحات مربوط به تیکت‌ها تا اطلاعات جدید نمایش داده شود
-    revalidatePath('/admin/tickets');
+    revalidatePath("/admin/tickets");
     revalidatePath(`/admin/tickets/${data.ticketId}`);
     // همچنین صفحه پیگیری کاربر را هم revalidate می‌کنیم
     const ticket = await prisma.ticket.findUnique({ where: { id: data.ticketId }, select: { trackingId: true } });
@@ -107,6 +109,6 @@ export async function addReplyToTicket(data: ReplyData) {
     return { success: true };
   } catch (error) {
     console.error("Error adding reply:", error);
-    return { error: 'خطا در ثبت پاسخ.' };
+    return { error: "خطا در ثبت پاسخ." };
   }
 }
