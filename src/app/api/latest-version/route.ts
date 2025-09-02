@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
     }
 
     // تشخیص دامنه از request
-    const origin = request.nextUrl.origin; // مثال: https://wumpus.ir
+    const origin = request.nextUrl.origin; 
     const downloadUrl = `${origin}${latestApp.url}`;
 
     // تبدیل changelog به آرایه

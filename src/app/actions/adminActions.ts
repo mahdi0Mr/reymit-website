@@ -4,24 +4,22 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
-import { upload } from "@vercel/blob/client"; // اضافه شد
+import { put } from "@vercel/blob";
+import { compareVersions } from "compare-versions";
 
-// --- بخش احراز هویت ادمین ---
-
+// --- بخش احراز هویت ادمین (بدون تغییر) ---
 export async function authenticateAdmin(prevState: string | undefined, formData: FormData) {
   const password = formData.get("password") as string;
-
   if (password === process.env.ADMIN_PASSWORD) {
     const cookieStore = await cookies();
     cookieStore.set("admin-auth", "true", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24, // 1 روز
-      path: "/"
+      maxAge: 60 * 60 * 24,
+      path: "/",
     });
     redirect("/admin");
   }
-
   return "رمز عبور نامعتبر است.";
 }
 
@@ -31,199 +29,123 @@ export async function adminLogout() {
   redirect("/secret-admin-login");
 }
 
-// --- بخش مدیریت فایل برنامه ---
+// --- توابع کمکی ---
 
-interface AppFileData {
-  version: string;
-  changelog: string; // می‌تواند JSON array یا متن چندخط باشد
-  fileName: string;
-  url: string;
-}
 
-export async function createAppFile(data: AppFileData) {
+async function uploadVersionJson(version: string, changelog: string, url: string) {
+  // تبدیل changelog به آرایه
+  const changelogArray: string[] = (() => {
+    if (!changelog) return [];
+    try {
+      const parsed = JSON.parse(changelog);
+      if (Array.isArray(parsed)) return parsed.map(String);
+    } catch { }
+    return changelog
+      .split("\n")
+      .map(s => s.trim())
+      .filter(Boolean);
+  })();
+
+  const versionObj = {
+    latest_version: version,
+    release_date: new Date().toLocaleDateString("fa-IR"),
+    download_url: url,
+    changelog: changelogArray,
+  };
+
   try {
-    const existingVersion = await prisma.appFile.findUnique({
-      where: { version: data.version },
-    });
-
-    if (existingVersion) {
-      return { error: `نسخه ${data.version} قبلاً ثبت شده است.` };
-    }
-
-    await prisma.appFile.create({
-      data: {
-        version: data.version,
-        changelog: data.changelog,
-        fileName: data.fileName,
-        url: data.url,
-      },
-    });
-
-    // تبدیل changelog به آرایه (اگر کاربر JSON فرستاده یا متن چندخط)
-    const changelogArray: string[] = (() => {
-      if (!data.changelog) return [];
-      try {
-        const parsed = JSON.parse(data.changelog);
-        if (Array.isArray(parsed)) return parsed.map(String);
-      } catch (error) {
-        console.error("Error :", error);
-      }
-      // fallback: اگر چند خط وارد شده
-      return data.changelog
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean);
-    })();
-
-    const versionObj = {
-      latest_version: data.version,
-      release_date: new Date().toLocaleDateString("fa-IR"),
-      download_url: data.url,
-      changelog: changelogArray,
-    };
-
-    const versionJsonStr = JSON.stringify(versionObj, null, 2);
-
-    // تلاش برای آپلود version.json به Vercel Blob با توکن سروری
     const token = process.env.BLOB_READ_WRITE_TOKEN;
     if (!token) {
-      console.warn("BLOB_READ_WRITE_TOKEN تعریف نشده؛ version.json آپلود نشد.");
-      // revalidate صفحات لازم
-      revalidatePath("/");
-      revalidatePath("/download");
-      return { success: true, warning: "BLOB_READ_WRITE_TOKEN موجود نیست؛ version.json آپلود نشد." };
+      console.warn("توکن BLOB_READ_WRITE_TOKEN موجود نیست؛ version.json آپلود نشد.");
+      return;
     }
 
-    try {
-      // آپلود version.json با endpoint سروری
-      await upload(
-        "version.json",
-        new Blob([versionJsonStr], { type: "application/json" }),
-        {
-          access: "public",
-          handleUploadUrl: "/api/admin/upload",
-          // @ts-expect-error: allowOverwrite موجود در type تعریف نشده ولی ما میخوایم استفاده کنیم
-          allowOverwrite: true,
-        }
-      );
+    const blob = await put(
+      "version.json",
+      new Blob([JSON.stringify(versionObj, null, 2)], { type: "application/json" }),
+      {
+        access: "public",
+        contentType: "application/json",
+        // @ts-ignore: allowOverwrite exists but TS شاید تایید نکند
+        allowOverwrite: true,
+      }
+    );
 
-
-      console.log("version.json با موفقیت آپلود شد.");
-    } catch (uploadErr) {
-      console.error("خطا در آپلود version.json:", uploadErr);
-      revalidatePath("/");
-      revalidatePath("/download");
-      return { success: true, warning: "ریختن version.json به Blob ناموفق بود." };
-    }
-
-
-    // revalidate صفحات لازم
-    revalidatePath("/");
-    revalidatePath("/download");
-
-    return { success: true };
-  } catch (error) {
-    console.error("Error creating app file:", error);
-    return { error: "خطایی در هنگام ذخیره یا آپلود رخ داد." };
+    console.log("version.json با موفقیت بازنویسی شد:", blob.url);
+  } catch (err) {
+    console.error("خطا در آپلود version.json:", err);
   }
 }
 
-
-// --- گرفتن آخرین نسخه ---
-export async function getLastAppFile() {
+async function findLatestVersionInDb() {
   try {
-    const lastFile = await prisma.appFile.findFirst({
-      orderBy: { releaseDate: "desc" },
+    const allFiles = await prisma.appFile.findMany({
+      select: { version: true, changelog: true, url: true },
     });
-    return lastFile;
-  } catch (error) {
-    console.error("Error fetching last app file:", error);
+    if (allFiles.length === 0) return null;
+
+    // مرتب‌سازی بر اساس ورژن
+    const sortedFiles = allFiles.sort((a, b) => compareVersions(b.version, a.version));
+    const latest = sortedFiles[0];
+    console.log("آخرین نسخه در DB:", latest);
+    return latest;
+  } catch (err) {
+    console.error("خطا در دریافت آخرین نسخه از DB:", err);
     return null;
   }
 }
 
-// --- آپدیت نسخه موجود ---
-interface UpdateAppFileData {
+// --- بخش اصلی مدیریت نسخه ---
+
+interface AppVersionData {
   version: string;
   changelog: string;
   fileName: string;
   url: string;
+  manualUrl?: string;
 }
 
-export async function updateAppFile(data: UpdateAppFileData) {
+
+interface PublishData {
+  version: string;
+  changelog: string;
+  url: string;
+}
+
+export async function publishSpecificVersion(data: PublishData) {
   try {
-    const existing = await prisma.appFile.findUnique({
-      where: { version: data.version },
-    });
-
-    if (!existing) {
-      return { error: `نسخه ${data.version} پیدا نشد.` };
+    if (!data.version || !data.url) {
+      return { error: "شماره نسخه و لینک دانلود الزامی است." };
     }
-
-    await prisma.appFile.update({
-      where: { version: data.version },
-      data: {
-        changelog: data.changelog,
-        fileName: data.fileName,
-        url: data.url,
-      },
-    });
-
-    // تبدیل changelog به آرایه
-    const changelogArray: string[] = (() => {
-      if (!data.changelog) return [];
-      try {
-        const parsed = JSON.parse(data.changelog);
-        if (Array.isArray(parsed)) return parsed.map(String);
-      } catch (error) {
-        console.error("Error parsing changelog:", error);
-      }
-      return data.changelog
-        .split("\n")
-        .map((s) => s.trim())
-        .filter(Boolean);
-    })();
-
-    const versionObj = {
-      latest_version: data.version,
-      release_date: new Date().toLocaleDateString("fa-IR"),
-      download_url: data.url,
-      changelog: changelogArray,
-    };
-
-    const versionJsonStr = JSON.stringify(versionObj, null, 2);
-
-    const token = process.env.BLOB_READ_WRITE_TOKEN;
-    if (token) {
-      try {
-        await upload(
-          "version.json",
-          new Blob([versionJsonStr], { type: "application/json" }),
-          {
-            access: "public",
-            handleUploadUrl: "/api/admin/upload",
-            // @ts-expect-error
-            allowOverwrite: true,
-          }
-        );
-        console.log("version.json بعد از ویرایش آپلود شد.");
-      } catch (uploadErr) {
-        console.error("خطا در آپلود version.json:", uploadErr);
-      }
-    }
-
+    await uploadVersionJson(data.version, data.changelog, data.url);
     revalidatePath("/");
     revalidatePath("/download");
-
-    return { success: true };
+    return { success: true, message: `نسخه ${data.version} با موفقیت منتشر شد.` };
   } catch (error) {
-    console.error("Error updating app file:", error);
-    return { error: "خطایی در هنگام آپدیت نسخه رخ داد." };
+    console.error("Error in publishSpecificVersion:", error);
+    return { error: "خطایی در هنگام انتشار نسخه رخ داد." };
   }
 }
 
-// --- بخش مدیریت تیکت‌ها ---
 
+// --- [تغییر اصلی] توابع سازگاری برای فرم قدیمی ---
+// این توابع اضافه شده‌اند تا فرم شما که از نام‌های قدیمی استفاده می‌کند، بدون هیچ تغییری کار کند.
+
+export async function createAppFile(data: AppVersionData) {
+  // این تابع به سادگی تابع جدید و اصلی را فراخوانی می‌کند
+  return saveAppVersion(data);
+}
+
+export async function updateAppFile(data: AppVersionData) {
+  // این تابع نیز به سادگی تابع جدید و اصلی را فراخوانی می‌کند
+  return saveAppVersion(data);
+}
+// --- پایان بخش سازگاری ---
+
+
+// --- توابع دیگر ---
+
+// --- بخش مدیریت تیکت‌ها (بدون تغییر) ---
 interface ReplyData {
   ticketId: string;
   content: string;
@@ -234,30 +156,150 @@ export async function addReplyToTicket(data: ReplyData) {
   try {
     await prisma.$transaction(async (tx) => {
       await tx.ticketReply.create({
-        data: {
-          ticketId: data.ticketId,
-          content: data.content,
-          authorIsAdmin: true,
-        },
+        data: { ticketId: data.ticketId, content: data.content, authorIsAdmin: true },
       });
-
       await tx.ticket.update({
-        where: { id: data.ticketId },
-        data: { status: data.status },
+        where: { id: data.ticketId }, data: { status: data.status },
       });
     });
 
     revalidatePath("/admin/tickets");
     revalidatePath(`/admin/tickets/${data.ticketId}`);
-
     const ticket = await prisma.ticket.findUnique({ where: { id: data.ticketId }, select: { trackingId: true } });
     if (ticket) {
       revalidatePath(`/support/track/${ticket.trackingId}`);
     }
-
     return { success: true };
   } catch (error) {
     console.error("Error adding reply:", error);
     return { error: "خطا در ثبت پاسخ." };
+  }
+}
+
+
+
+
+
+
+
+
+import { upload } from "@vercel/blob/client";
+
+// --- مدیریت فایل اپلیکیشن ---
+
+interface AppFileData {
+  version: string;
+  changelog: string;
+  fileName: string | null;
+  url: string;
+}
+
+export async function saveAppVersion(data: AppFileData) {
+  try {
+    console.log("=== saveAppVersion START ===");
+    console.log("داده‌های ورودی:", data);
+
+    // تضمین اینکه fileName همیشه رشته باشد
+    const safeFileName = data.fileName ?? "";
+    const safeUrl = data.url;
+
+    // بررسی وجود نسخه
+    const existing = await prisma.appFile.findUnique({
+      where: { version: data.version },
+    });
+
+    if (existing) {
+      console.log(`نسخه ${data.version} موجود است → آپدیت`);
+      await prisma.appFile.update({
+        where: { version: data.version },
+        data: {
+          changelog: data.changelog,
+          fileName: safeFileName,
+          url: safeUrl,
+        },
+      });
+    } else {
+      console.log(`نسخه ${data.version} موجود نیست → ایجاد رکورد جدید`);
+      await prisma.appFile.create({
+        data: {
+          version: data.version,
+          changelog: data.changelog,
+          fileName: safeFileName,
+          url: safeUrl,
+        },
+      });
+    }
+
+    // گرفتن آخرین نسخه DB برای ساخت version.json
+    const latestDbFile = await prisma.appFile.findFirst({
+      orderBy: { releaseDate: "desc" },
+    });
+
+    if (!latestDbFile) {
+      console.warn("هیچ نسخه‌ای در DB یافت نشد؛ version.json ساخته نشد.");
+      return { success: true };
+    }
+
+    // تبدیل changelog به آرایه
+    let changelogArray: string[] = [];
+    try {
+      const parsed = JSON.parse(latestDbFile.changelog);
+      if (Array.isArray(parsed)) changelogArray = parsed.map(String);
+      else changelogArray = latestDbFile.changelog.split("\n").map(s => s.trim()).filter(Boolean);
+    } catch {
+      changelogArray = latestDbFile.changelog.split("\n").map(s => s.trim()).filter(Boolean);
+    }
+
+    const versionObj = {
+      latest_version: data.version,
+      release_date: new Date(latestDbFile.releaseDate).toLocaleDateString("fa-IR"),
+      download_url: latestDbFile.url,
+      changelog: changelogArray,
+    };
+
+    console.log("version.json آماده برای آپلود:", versionObj);
+
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (token) {
+      try {
+        const blob = await put(
+          "version.json",
+          JSON.stringify(versionObj, null, 2),
+          {
+            access: "public",
+            contentType: "application/json",
+            allowOverwrite: true, // overwrite نسخه قبلی
+            token, // حتماً token سروری را بدهید
+          }
+        );
+        console.log("version.json با موفقیت بازنویسی شد:", blob.url);
+      } catch (uploadErr) {
+        console.error("خطا در آپلود version.json:", uploadErr);
+      }
+    } else {
+      console.warn("توکن BLOB_READ_WRITE_TOKEN موجود نیست؛ version.json آپلود نشد.");
+    }
+
+    revalidatePath("/");
+    revalidatePath("/download");
+
+    console.log("=== saveAppVersion END ===");
+    return { success: true };
+  } catch (error) {
+    console.error("Error saving app version:", error);
+    return { error: "خطا در ثبت نسخه جدید." };
+  }
+}
+
+// گرفتن آخرین نسخه
+export async function getLastAppFile() {
+  try {
+    const lastFile = await prisma.appFile.findFirst({
+      orderBy: { releaseDate: "desc" },
+    });
+    return lastFile;
+  } catch (error) {
+    console.error("Error fetching last app file:", error);
+    return null;
   }
 }

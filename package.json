@@ -17,6 +17,7 @@
     "@prisma/client": "^6.15.0",
     "@vercel/blob": "^1.1.1",
     "@vercel/postgres": "^0.10.0",
+    "compare-versions": "^6.1.1",
     "drizzle-kit": "^0.31.4",
     "drizzle-orm": "^0.44.5",
     "lucide-react": "^0.542.0",
