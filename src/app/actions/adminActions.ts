@@ -10,18 +10,18 @@ import { upload } from "@vercel/blob/client"; // اضافه شد
 
 export async function authenticateAdmin(prevState: string | undefined, formData: FormData) {
   const password = formData.get("password") as string;
-  
+
   if (password === process.env.ADMIN_PASSWORD) {
     const cookieStore = await cookies();
-    cookieStore.set("admin-auth", "true", { 
-      httpOnly: true, 
-      secure: process.env.NODE_ENV === "production", 
+    cookieStore.set("admin-auth", "true", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
       maxAge: 60 * 60 * 24, // 1 روز
-      path: "/" 
+      path: "/"
     });
     redirect("/admin");
   }
-  
+
   return "رمز عبور نامعتبر است.";
 }
 
@@ -95,18 +95,20 @@ export async function createAppFile(data: AppFileData) {
     }
 
     try {
+      // آپلود version.json با endpoint سروری
       await upload("version.json", new Blob([versionJsonStr], { type: "application/json" }), {
         access: "public",
-        token, // توکن سروری برای آپلود مستقیم
+        handleUploadUrl: "/api/admin/upload", // endpoint سروری که قبلش کوکی admin-auth رو چک می‌کنه
       });
+
       console.log("version.json با موفقیت آپلود شد.");
     } catch (uploadErr) {
       console.error("خطا در آپلود version.json:", uploadErr);
-      // با وجود خطای آپلود، رکورد DB قبلاً ثبت شده؛ می‌توانیم هشدار برگردانیم
       revalidatePath("/");
       revalidatePath("/download");
       return { success: true, warning: "ریختن version.json به Blob ناموفق بود." };
     }
+
 
     // revalidate صفحات لازم
     revalidatePath("/");
@@ -143,7 +145,7 @@ export async function addReplyToTicket(data: ReplyData) {
         data: { status: data.status },
       });
     });
-    
+
     revalidatePath("/admin/tickets");
     revalidatePath(`/admin/tickets/${data.ticketId}`);
 
@@ -151,7 +153,7 @@ export async function addReplyToTicket(data: ReplyData) {
     if (ticket) {
       revalidatePath(`/support/track/${ticket.trackingId}`);
     }
-    
+
     return { success: true };
   } catch (error) {
     console.error("Error adding reply:", error);
