@@ -102,7 +102,7 @@ export async function createAppFile(data: AppFileData) {
         {
           access: "public",
           handleUploadUrl: "/api/admin/upload",
-          // @ts-expect-error
+          // @ts-expect-error: allowOverwrite موجود در type تعریف نشده ولی ما میخوایم استفاده کنیم
           allowOverwrite: true,
         }
       );
