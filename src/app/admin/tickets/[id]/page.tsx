@@ -3,6 +3,7 @@ import prisma from '@/lib/prisma';
 import ReplyForm from '../../../components/ReplyForm';
 import { notFound } from 'next/navigation';
 import React from 'react';
+import type { TicketStatus } from '@/app/actions/adminActions'; // ⚡ Export شده از adminActions
 
 type Params = { id: string };
 
@@ -22,10 +23,8 @@ async function getTicketDetails(id: string) {
 }
 
 export default async function ViewTicketPage({ params }: PageProps) {
-  // ⚠️ حتماً params را await کن
   const { id } = await params;
 
-  // اعتبارسنجی اولیه id
   if (!id || typeof id !== 'string' || id.trim() === '') {
     return notFound();
   }
@@ -35,6 +34,9 @@ export default async function ViewTicketPage({ params }: PageProps) {
   if (!ticket) {
     return notFound();
   }
+
+  // ⚡ Type Assertion: فرض می‌کنیم status فقط یکی از مقادیر مجاز است
+  const currentStatus = ticket.status as TicketStatus;
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -84,7 +86,7 @@ export default async function ViewTicketPage({ params }: PageProps) {
         </div>
 
         {/* بخش فرم پاسخ */}
-        <ReplyForm ticketId={ticket.id} currentStatus={ticket.status} />
+        <ReplyForm ticketId={ticket.id} currentStatus={currentStatus} />
       </div>
     </div>
   );
