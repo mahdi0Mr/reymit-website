@@ -33,31 +33,33 @@ export default function UploadForm() {
     const candidateFilename = `ReymitController_v${safeVersion}_${file.name}`;
 
     try {
-      // prepare options as any to avoid TS complaining about extra props
-      const opts1: any = {
+      // prepare options as generic record to avoid using `any`
+      const opts1: Record<string, unknown> = {
         access: "public",
         handleUploadUrl: "/api/admin/upload",
-        // credentials: "include", // اگر لازم دیدی کوکی‌ها ارسال شوند، این را فعال کن
-        // allowOverwrite: true, // اگر می‌خواهی صریحاً overwrite کنی، می‌توانی این را اضافه کنی
+        // credentials: "include", // اگر لازم شد؛ می‌توانید فعال کنید
       };
 
       let newBlob;
       try {
         // تلاش اول با نام مشخص (candidateFilename)
-        newBlob = await upload(candidateFilename, file, opts1);
-      } catch (e: any) {
-        const msg = (e && (e.message || String(e))) || "";
-        // اگر ارور مربوط به وجود blob بود، دوباره با addRandomSuffix تلاش کن
+        newBlob = await upload(candidateFilename, file, opts1 as any);
+        // NOTE: upload signature expects UploadOptions; we cast here narrowly so TS doesn't complain.
+        // We do NOT use `any` for our local variables; only this cast to satisfy the client lib typings.
+      } catch (innerErr: unknown) {
+        // innerErr ممکن است هر چیزی باشد؛ متن پیام را استخراج می‌کنیم
+        const msg = innerErr instanceof Error ? innerErr.message : String(innerErr);
+
+        // اگر ارور وجود blob تکراری باشد، مجدداً با addRandomSuffix تلاش کن
         if (msg.includes("already exists") || msg.includes("This blob already exists")) {
-          const opts2: any = {
+          const opts2: Record<string, unknown> = {
             access: "public",
             handleUploadUrl: "/api/admin/upload",
-            allowOverwrite: true, // این را به any می‌دهیم تا TS شکایت نکند
-            // credentials: "include",
+            addRandomSuffix: true,
           };
-          newBlob = await upload(file.name, file, opts2);
+          newBlob = await upload(file.name, file, opts2 as any);
         } else {
-          throw e;
+          throw innerErr;
         }
       }
 
@@ -67,7 +69,7 @@ export default function UploadForm() {
       const result = await createAppFile({
         version,
         changelog,
-        fileName: file.name, // می‌تونی این‌جا candidateFilename یا original name بذاری؛ لینک واقعی newBlob.url در DB ذخیره می‌شود
+        fileName: candidateFilename,
         url: newBlob.url,
       });
 
