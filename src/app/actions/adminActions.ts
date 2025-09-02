@@ -96,10 +96,17 @@ export async function createAppFile(data: AppFileData) {
 
     try {
       // آپلود version.json با endpoint سروری
-      await upload("version.json", new Blob([versionJsonStr], { type: "application/json" }), {
-        access: "public",
-        handleUploadUrl: "/api/admin/upload", // endpoint سروری که قبلش کوکی admin-auth رو چک می‌کنه
-      });
+      await upload(
+        "version.json",
+        new Blob([versionJsonStr], { type: "application/json" }),
+        {
+          access: "public",
+          handleUploadUrl: "/api/admin/upload",
+          // @ts-ignore
+          allowOverwrite: true,
+        }
+      );
+
 
       console.log("version.json با موفقیت آپلود شد.");
     } catch (uploadErr) {
