@@ -65,8 +65,8 @@ export async function createAppFile(data: AppFileData) {
       try {
         const parsed = JSON.parse(data.changelog);
         if (Array.isArray(parsed)) return parsed.map(String);
-      } catch (_) {
-        // not JSON -> continue
+      } catch (error) {
+        console.error("Error :", error);
       }
       // fallback: اگر چند خط وارد شده
       return data.changelog
