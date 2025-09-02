@@ -3,7 +3,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import prisma from "@/lib/prisma"; // Prisma client را import کنید
+import prisma from "@/lib/prisma";
+import { upload } from "@vercel/blob/client"; // اضافه شد
 
 // --- بخش احراز هویت ادمین ---
 
@@ -11,7 +12,7 @@ export async function authenticateAdmin(prevState: string | undefined, formData:
   const password = formData.get("password") as string;
   
   if (password === process.env.ADMIN_PASSWORD) {
-    const cookieStore = await cookies(); // 👈 await اضافه شد
+    const cookieStore = await cookies();
     cookieStore.set("admin-auth", "true", { 
       httpOnly: true, 
       secure: process.env.NODE_ENV === "production", 
@@ -25,7 +26,7 @@ export async function authenticateAdmin(prevState: string | undefined, formData:
 }
 
 export async function adminLogout() {
-  const cookieStore = await cookies(); // 👈 await اضافه شد
+  const cookieStore = await cookies();
   cookieStore.delete("admin-auth");
   redirect("/secret-admin-login");
 }
@@ -34,7 +35,7 @@ export async function adminLogout() {
 
 interface AppFileData {
   version: string;
-  changelog: string;
+  changelog: string; // می‌تواند JSON array یا متن چندخط باشد
   fileName: string;
   url: string;
 }
@@ -58,14 +59,63 @@ export async function createAppFile(data: AppFileData) {
       },
     });
 
-    // کش صفحه دانلود و صفحه اصلی را به‌روز کن
+    // تبدیل changelog به آرایه (اگر کاربر JSON فرستاده یا متن چندخط)
+    const changelogArray: string[] = (() => {
+      if (!data.changelog) return [];
+      try {
+        const parsed = JSON.parse(data.changelog);
+        if (Array.isArray(parsed)) return parsed.map(String);
+      } catch (_) {
+        // not JSON -> continue
+      }
+      // fallback: اگر چند خط وارد شده
+      return data.changelog
+        .split("\n")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    })();
+
+    const versionObj = {
+      latest_version: data.version,
+      release_date: new Date().toLocaleDateString("fa-IR"),
+      download_url: data.url,
+      changelog: changelogArray,
+    };
+
+    const versionJsonStr = JSON.stringify(versionObj, null, 2);
+
+    // تلاش برای آپلود version.json به Vercel Blob با توکن سروری
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    if (!token) {
+      console.warn("BLOB_READ_WRITE_TOKEN تعریف نشده؛ version.json آپلود نشد.");
+      // revalidate صفحات لازم
+      revalidatePath("/");
+      revalidatePath("/download");
+      return { success: true, warning: "BLOB_READ_WRITE_TOKEN موجود نیست؛ version.json آپلود نشد." };
+    }
+
+    try {
+      await upload("version.json", new Blob([versionJsonStr], { type: "application/json" }), {
+        access: "public",
+        token, // توکن سروری برای آپلود مستقیم
+      });
+      console.log("version.json با موفقیت آپلود شد.");
+    } catch (uploadErr) {
+      console.error("خطا در آپلود version.json:", uploadErr);
+      // با وجود خطای آپلود، رکورد DB قبلاً ثبت شده؛ می‌توانیم هشدار برگردانیم
+      revalidatePath("/");
+      revalidatePath("/download");
+      return { success: true, warning: "ریختن version.json به Blob ناموفق بود." };
+    }
+
+    // revalidate صفحات لازم
     revalidatePath("/");
     revalidatePath("/download");
 
     return { success: true };
   } catch (error) {
     console.error("Error creating app file:", error);
-    return { error: "خطایی در هنگام ذخیره در دیتابیس رخ داد." };
+    return { error: "خطایی در هنگام ذخیره یا آپلود رخ داد." };
   }
 }
 
@@ -79,9 +129,7 @@ interface ReplyData {
 
 export async function addReplyToTicket(data: ReplyData) {
   try {
-    // استفاده از transaction برای اطمینان از انجام هر دو عملیات با هم
     await prisma.$transaction(async (tx) => {
-      // 1. ثبت پاسخ جدید
       await tx.ticketReply.create({
         data: {
           ticketId: data.ticketId,
@@ -90,17 +138,15 @@ export async function addReplyToTicket(data: ReplyData) {
         },
       });
 
-      // 2. به‌روزرسانی وضعیت تیکت اصلی
       await tx.ticket.update({
         where: { id: data.ticketId },
         data: { status: data.status },
       });
     });
     
-    // پاک کردن کش صفحات مربوط به تیکت‌ها تا اطلاعات جدید نمایش داده شود
     revalidatePath("/admin/tickets");
     revalidatePath(`/admin/tickets/${data.ticketId}`);
-    // همچنین صفحه پیگیری کاربر را هم revalidate می‌کنیم
+
     const ticket = await prisma.ticket.findUnique({ where: { id: data.ticketId }, select: { trackingId: true } });
     if (ticket) {
       revalidatePath(`/support/track/${ticket.trackingId}`);
