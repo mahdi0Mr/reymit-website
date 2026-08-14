@@ -12,6 +12,7 @@ const navItems = [
   { href: "/admin/upload", label: "آپلود نسخه" },
   { href: "/admin/admins", label: "مدیریت ادمین‌ها" },
   { href: "/admin/licenses", label: "تولید لایسنس" },
+  { href: "/admin/settings", label: "تنظیمات زمان‌بندی" },
   { href: "/admin/audit", label: "گزارش فعالیت‌ها" },
 ];
 

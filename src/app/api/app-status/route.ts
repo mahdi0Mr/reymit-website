@@ -1,25 +1,28 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
+import { logMachineAction } from "@/app/actions/machineActions";
 
 // [جدید] دریافت وضعیت برنامه کنترلر دونیت از سمت اپلیکیشن
-// اپ هر ۶۰ ثانیه و هنگام تغییر وضعیت (شروع/توقف استریم، بستن برنامه) این داده‌ها را ارسال می‌کند:
-//   machine_id, computer_name, online, running_for_stream, last_online, app_version, platform
+// اپ هر ۶۰ ثانیه و هنگام تغییر وضعیت (شروع/توقف استریم، بستن برنامه) این داده‌ها را ارسال می‌کند
 const statusSchema = z.object({
   machine_id: z.string().min(1),
   computer_name: z.string().min(1),
   online: z.boolean(),
   running_for_stream: z.boolean(),
-  last_online: z.string().optional(), // ساعت لوکال دستگاه؛ برای تشخیص آنلاین/آفلاین استفاده نمی‌شود
+  last_online: z.string().optional(),
   app_version: z.string().optional(),
   platform: z.string().optional(),
-  // [جدید] جزئیات پیشرفته (مقادیر حساس رمزنگاری‌شده از سمت اپ)
   window_target: z.string().optional(),
   platform_token_enc: z.string().optional(),
   donation_log_enc: z.string().optional(),
   app_log_enc: z.string().optional(),
-  // [جدید] شناسه پیام‌هایی که برنامه دریافت کرده (برای علامت‌گذاری readAt)
   processed_message_ids: z.array(z.string()).optional(),
+  // [جدید] لاگ‌های تغییر وضعیت از سمت اپ
+  machine_logs: z.array(z.object({
+    action: z.string(),
+    details: z.any().optional(),
+  })).optional(),
 });
 
 export async function POST(request: Request) {
@@ -39,8 +42,16 @@ export async function POST(request: Request) {
       );
     }
 
-    const { machine_id, computer_name, online, running_for_stream, app_version, platform, window_target, platform_token_enc, donation_log_enc, app_log_enc, processed_message_ids } = parsed.data;
+    const {
+      machine_id, computer_name, online, running_for_stream,
+      app_version, platform, window_target, platform_token_enc,
+      donation_log_enc, app_log_enc, processed_message_ids, machine_logs
+    } = parsed.data;
 
+    // دریافت وضعیت قبلی برای تشخیص تغییرات
+    const prevStatus = await prisma.appStatus.findUnique({ where: { machineId: machine_id } });
+
+    // بروزرسانی/ایجاد وضعیت
     await prisma.appStatus.upsert({
       where: { machineId: machine_id },
       update: {
@@ -53,7 +64,7 @@ export async function POST(request: Request) {
         platformTokenEnc: platform_token_enc ?? null,
         donationLogEnc: donation_log_enc ?? null,
         appLogEnc: app_log_enc ?? null,
-        lastSeenAt: new Date(), // زمان سرور؛ منبع معتبر برای آنلاین/آفلاین
+        lastSeenAt: new Date(),
       },
       create: {
         machineId: machine_id,
@@ -70,7 +81,32 @@ export async function POST(request: Request) {
       },
     });
 
-    // [جدید] علامت‌گذاری پیام‌های دریافت‌شده (تأیید تحویل از سمت اپ)
+    // [جدید] ثبت خودکار تغییرات وضعیت در MachineLog
+    if (prevStatus) {
+      if (prevStatus.online !== online) {
+        await logMachineAction(machine_id, online ? "online" : "offline", {}, "app");
+      }
+      if (prevStatus.runningForStream !== running_for_stream) {
+        await logMachineAction(machine_id, running_for_stream ? "stream_start" : "stream_stop", { platform }, "app");
+      }
+    } else {
+      // اولین بار که دستگاه گزارش می‌دهد
+      await logMachineAction(machine_id, online ? "online" : "offline", {}, "app");
+    }
+
+    // [جدید] ذخیره لاگ‌های ارسالی از سمت اپ
+    if (machine_logs && machine_logs.length > 0) {
+      for (const log of machine_logs) {
+        await logMachineAction(
+          machine_id,
+          log.action,
+          log.details || {},
+          "app"
+        );
+      }
+    }
+
+    // علامت‌گذاری پیام‌های دریافت‌شده
     if (processed_message_ids && processed_message_ids.length > 0) {
       await prisma.appMessage.updateMany({
         where: { id: { in: processed_message_ids } },
@@ -78,13 +114,31 @@ export async function POST(request: Request) {
       });
     }
 
-    // [جدید] دریافت پیام‌های در انتظار برای این دستگاه (مشخص یا broadcast)
+    // [جدید] دریافت تنظیمات زمان‌بندی سراسری
+    let config = await prisma.machineConfig.findFirst();
+    if (!config) {
+      config = await prisma.machineConfig.create({
+        data: { id: "global" },
+      });
+    }
+
+    // [جدید] بررسی وضعیت لایسنس این دستگاه
+    const validLicense = await prisma.generatedLicense.findFirst({
+      where: {
+        machineId: machine_id,
+        revoked: false,
+        expiryDate: { gt: new Date() },
+      },
+    });
+    const licenseValid = validLicense !== null;
+
+    // دریافت پیام‌های در انتظار
     const pendingMessages = await prisma.appMessage.findMany({
       where: {
         readAt: null,
         OR: [
           { machineId: machine_id },
-          { machineId: null }, // broadcast برای همه
+          { machineId: null },
         ],
       },
       orderBy: { createdAt: 'asc' },
@@ -94,6 +148,15 @@ export async function POST(request: Request) {
     return NextResponse.json({
       ok: true,
       messages: pendingMessages.map((m) => ({ id: m.id, message: m.message })),
+      // [جدید] تنظیمات برای اپلیکیشن
+      config: {
+        messageCheckInterval: config.messageCheckInterval,
+        statusUpdateInterval: config.statusUpdateInterval,
+        versionCheckInterval: config.versionCheckInterval,
+        donationPollInterval: config.donationPollInterval,
+      },
+      // [جدید] وضعیت لایسنس
+      license_valid: licenseValid,
     });
   } catch (err) {
     console.error("Error saving app status:", err);

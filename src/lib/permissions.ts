@@ -33,4 +33,5 @@ export const ROUTE_PERMISSION: Record<string, PermissionAction> = {
   "/admin/admins": PERMISSIONS.MANAGE_ADMINS,
   "/admin/licenses": PERMISSIONS.GENERATE_LICENSE,
   "/admin/audit": PERMISSIONS.VIEW_AUDIT,
+  "/admin/settings": PERMISSIONS.MANAGE_ADMINS,
 };

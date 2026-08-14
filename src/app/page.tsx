@@ -1,9 +1,11 @@
-import fs from 'fs/promises';
-import path from 'path';
+import prisma from '@/lib/prisma';
 // آیکون Telegram را اضافه کنید
 import { Download, Gem, ShieldCheck, Gamepad2, Palette, MessageCircleMore, Ticket } from 'lucide-react'; 
 // کامپوننت فرم پیگیری را وارد کنید
 import TrackTicketForm from '@/app/components/TrackTicketForm'; 
+
+// [مهم] صفحه باید در هر درخواست با دیتای زنده از دیتابیس رندر شود
+export const dynamic = 'force-dynamic';
 
 // تعریف نوع داده‌ها برای TypeScript
 interface VersionInfo {
@@ -13,14 +15,30 @@ interface VersionInfo {
   changelog: string[];
 }
 
-// تابع برای خواندن اطلاعات از فایل JSON
-async function getVersionData(): Promise<VersionInfo> {
-  const filePath = path.join(process.cwd(), 'public', 'version.json');
-  const fileContent = await fs.readFile(filePath, 'utf-8');
-  return JSON.parse(fileContent);
+// تابع برای خواندن آخرین نسخه از دیتابیس
+async function getVersionData(): Promise<VersionInfo | null> {
+  const latestFile = await prisma.appFile.findFirst({
+    orderBy: { releaseDate: "desc" },
+  });
+  if (!latestFile) return null;
+
+  let changelogArray: string[] = [];
+  try {
+    const parsed = JSON.parse(latestFile.changelog);
+    if (Array.isArray(parsed)) changelogArray = parsed.map(String);
+    else changelogArray = latestFile.changelog.split("\n").map(s => s.trim()).filter(Boolean);
+  } catch {
+    changelogArray = latestFile.changelog.split("\n").map(s => s.trim()).filter(Boolean);
+  }
+
+  return {
+    latest_version: latestFile.version,
+    release_date: new Date(latestFile.releaseDate).toLocaleDateString("fa-IR"),
+    download_url: latestFile.url,
+    changelog: changelogArray,
+  };
 }
 
-// کامپوننت اصلی صفحه
 export default async function HomePage() {
   const versionData = await getVersionData();
 
@@ -49,11 +67,11 @@ export default async function HomePage() {
             با کنترلر دونیت، به سادگی برای هر مبلغ دونیت، یک دستور کیبورد تعریف کنید تا افکت‌های صوتی، تصویری یا هر دستور دیگری در بازی یا نرم‌افزار استریم شما اجرا شود.
           </p>
           <a
-            href={versionData.download_url}
+            href={versionData?.download_url || "#"}
             className="inline-flex items-center gap-2 px-8 py-3 bg-sky-500 text-white font-bold rounded-lg shadow-lg hover:bg-sky-600 transition-transform transform hover:scale-105"
           >
             <Download size={20} />
-            دانلود آخرین نسخه (v{versionData.latest_version})
+            {versionData ? `دانلود آخرین نسخه (v${versionData.latest_version})` : "دانلود برنامه"}
           </a>
         </section>
 
@@ -87,14 +105,21 @@ export default async function HomePage() {
         {/* Update Info & License Section */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-8 py-16">
           {/* Update Info */}
-          <div className="bg-[#2a2a40] p-6 rounded-lg border border-gray-700">
-            <h3 className="text-2xl font-bold mb-4 text-green-400">اطلاعات آخرین نسخه</h3>
-            <p className="mb-4"><strong>تاریخ انتشار:</strong> {versionData.release_date}</p>
-            <h4 className="font-bold mb-2">تغییرات جدید:</h4>
-            <ul className="list-disc list-inside space-y-2 text-gray-300 pr-4">
-              {versionData.changelog.map((item, index) => <li key={index}>{item}</li>)}
-            </ul>
-          </div>
+          {versionData ? (
+            <div className="bg-[#2a2a40] p-6 rounded-lg border border-gray-700">
+              <h3 className="text-2xl font-bold mb-4 text-green-400">اطلاعات آخرین نسخه</h3>
+              <p className="mb-4"><strong>تاریخ انتشار:</strong> {versionData.release_date}</p>
+              <h4 className="font-bold mb-2">تغییرات جدید:</h4>
+              <ul className="list-disc list-inside space-y-2 text-gray-300 pr-4">
+                {versionData.changelog.map((item, index) => <li key={index}>{item}</li>)}
+              </ul>
+            </div>
+          ) : (
+            <div className="bg-[#2a2a40] p-6 rounded-lg border border-gray-700">
+              <h3 className="text-2xl font-bold mb-4 text-green-400">اطلاعات آخرین نسخه</h3>
+              <p className="text-gray-400">هنوز نسخه‌ای منتشر نشده است.</p>
+            </div>
+          )}
           
           {/* License & Support */}
           <div className="bg-[#2a2a40] p-6 rounded-lg border border-gray-700 flex flex-col justify-center items-center text-center">
@@ -106,7 +131,7 @@ export default async function HomePage() {
                {/* <a href="https://wumpus.ir/product/donatron/" target="_blank" className="flex items-center justify-center gap-2 px-6 py-2 bg-pink-500 text-white font-semibold rounded-lg hover:bg-pink-600 transition">
                 <Gem size={18} /> خرید لایسنس
               </a> */}
-              <a href="https://t.me/+RPHxvGTsumxiNTA0" target="_blank" className="flex items-center justify-center gap-2 px-6 py-2 bg-sky-500 text-white font-semibold rounded-lg hover:bg-sky-600 transition">
+              <a href="https://t.me/Donatron_MC" target="_blank" className="flex items-center justify-center gap-2 px-6 py-2 bg-sky-500 text-white font-semibold rounded-lg hover:bg-sky-600 transition">
                 <MessageCircleMore size={18} /> پشتیبانی تلگرام
               </a>
               {/* [تغییر] لینک دیسکورد با لینک ارسال تیکت جایگزین شد */}

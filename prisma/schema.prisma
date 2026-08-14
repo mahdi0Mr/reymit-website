@@ -107,11 +107,37 @@ model AuditLog {
 
 // [جدید] لایسنس‌های تولید شده در سایت
 model GeneratedLicense {
-  id         String   @id @default(cuid())
+  id         String     @id @default(cuid())
   machineId  String
-  licenseKey String   @unique
+  licenseKey String     @unique
   expiryDate DateTime
+  revoked    Boolean    @default(false)
+  revokedAt  DateTime?
   adminId    String?
-  admin      Admin?   @relation(fields: [adminId], references: [id])
-  createdAt  DateTime @default(now())
+  admin      Admin?     @relation(fields: [adminId], references: [id])
+  createdAt  DateTime   @default(now())
+}
+
+// [جدید] تنظیمات زمان‌بندی برنامه (تک رکورد سراسری)
+// این تنظیمات از پنل ادمین قابل تغییر است و اپلیکیشن در heartbeat دریافت می‌کند
+model MachineConfig {
+  id                     String   @id @default(cuid())
+  messageCheckInterval   Int      @default(60)     // فاصله بررسی پیام‌های مدیریت (ثانیه)
+  statusUpdateInterval   Int      @default(60)     // فاصله ارسال heartbeat (ثانیه)
+  versionCheckInterval   Int      @default(600)    // فاصله بررسی آپدیت جدید (ثانیه) - پیش‌فرض ۱۰ دقیقه
+  donationPollInterval   Int      @default(5)      // فاصله دریافت دونیت از API (ثانیه)
+  updatedAt              DateTime @updatedAt
+}
+
+// [جدید] تاریخچه کامل تغییرات هر دستگاه
+// هم از سمت اپ (وضعیت آنلاین/استریم) و هم از سمت ادمین (لایسنس/تنظیمات) ثبت می‌شود
+model MachineLog {
+  id        String   @id @default(cuid())
+  machineId String
+  action    String   // online, offline, stream_start, stream_stop, license_assigned, license_revoked, donation_received, config_changed, admin_message_sent
+  details   String?  // JSON payload
+  source    String   @default("app") // "app" | "admin"
+  createdAt DateTime @default(now())
+
+  @@index([machineId, createdAt])
 }

@@ -11,6 +11,8 @@ import {
 import { tryDecrypt } from '@/lib/crypto';
 import { PERMISSIONS } from '@/lib/permissions';
 import { requirePermission } from '@/lib/permissions-server';
+import MachineLicenseSection from './MachineLicenseSection';
+import MachineLogSection from './MachineLogSection';
 
 // [مهم] این صفحه باید در هر درخواست با دیتای زنده رندر شود
 export const dynamic = 'force-dynamic';
@@ -71,6 +73,22 @@ export default async function AppDetailPage({ params }: PageProps) {
   const donations = tryDecrypt<DonationRecord[]>(app.donationLogEnc);
   const appLog = tryDecrypt<string>(app.appLogEnc);
 
+  // دریافت اطلاعات لایسنس
+  const licenseRaw = await prisma.generatedLicense.findFirst({
+    where: { machineId },
+    orderBy: { createdAt: "desc" },
+  });
+  // تبدیل به قالب مورد انتظار MachineLicenseSection (Date → string برای serialization)
+  const license = licenseRaw ? {
+    id: licenseRaw.id,
+    machineId: licenseRaw.machineId,
+    licenseKey: licenseRaw.licenseKey,
+    expiryDate: licenseRaw.expiryDate.toISOString(),
+    revoked: licenseRaw.revoked,
+    revokedAt: licenseRaw.revokedAt?.toISOString() ?? null,
+    createdAt: licenseRaw.createdAt.toISOString(),
+  } : null;
+
   // وضعیت آنلاین/آفلاین بر اساس آخرین heartbeat
   const isOnline = app.online && Date.now() - app.lastSeenAt.getTime() < ONLINE_THRESHOLD_MS;
 
@@ -126,6 +144,9 @@ export default async function AppDetailPage({ params }: PageProps) {
             <span>آخرین آنلاین: <b className="text-gray-200" dir="ltr">{new Date(app.lastSeenAt).toLocaleString('fa-IR')}</b></span>
           </div>
         </div>
+
+        {/* مدیریت لایسنس */}
+        <MachineLicenseSection machineId={machineId} initialLicense={license} />
 
         {/* اطلاعات پلتفرم */}
         <div className="bg-[#2a2a40] p-6 rounded-lg border border-gray-700 mb-6">
@@ -249,6 +270,11 @@ export default async function AppDetailPage({ params }: PageProps) {
           ) : (
             <p className="text-gray-500">لاگی ثبت نشده است.</p>
           )}
+        </div>
+
+        {/* تاریخچه تغییرات دستگاه */}
+        <div className="mt-6">
+          <MachineLogSection machineId={machineId} />
         </div>
       </div>
     </div>
