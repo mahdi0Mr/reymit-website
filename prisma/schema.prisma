@@ -40,3 +40,16 @@ model AppFile {
   changelog    String    @db.Text
   releaseDate  DateTime  @default(now())
 }
+
+// [جدید] وضعیت نسخه‌های در حال اجرای برنامه کنترلر دونیت
+// توسط اپلیکیشن از طریق POST /api/app-status ثبت می‌شود
+model AppStatus {
+  machineId        String   @id // شناسه دستگاه (md5 کاربر@کامپیوتر از سمت اپ)
+  computerName     String   // نام کامپیوتر
+  online           Boolean  @default(true) // گزارش اپ: آنلاین/آفلاین
+  runningForStream Boolean  @default(false) // گزارش اپ: آیا پایش استریم فعال است
+  appVersion       String?  // نسخه برنامه
+  platform         String?  // پلتفرم انتخاب‌شده (reymit / donito)
+  lastSeenAt       DateTime @default(now()) // زمان دریافت آخرین heartbeat (ساعت سرور)
+  updatedAt        DateTime @updatedAt
+}

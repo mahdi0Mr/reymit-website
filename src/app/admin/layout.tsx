@@ -15,6 +15,9 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
             <Link href="/admin/tickets" className="text-gray-300 hover:text-white">
               مدیریت تیکت‌ها
             </Link>
+            <Link href="/admin/status" className="text-gray-300 hover:text-white">
+              وضعیت برنامه‌ها
+            </Link>
             <Link href="/admin/upload" className="text-gray-300 hover:text-white">
               آپلود نسخه
             </Link>
