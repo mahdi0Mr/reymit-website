@@ -2,6 +2,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { revalidatePath } from "next/cache";
 import prisma from "@/lib/prisma";
 import { put } from "@vercel/blob";
@@ -77,6 +78,7 @@ export async function authenticateAdmin(prevState: string | undefined, formData:
 
     redirect("/admin");
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     console.error("Login error:", error);
     return "خطایی در ورود رخ داد.";
   }
@@ -150,6 +152,7 @@ export async function setupFirstAdmin(prevState: string | undefined, formData: F
 
     redirect("/admin");
   } catch (error) {
+    if (isRedirectError(error)) throw error;
     console.error("Setup error:", error);
     return "خطایی در راه‌اندازی اولیه رخ داد.";
   }
