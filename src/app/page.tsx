@@ -103,9 +103,9 @@ export default async function HomePage() {
               برای استفاده از تمام قابلیت‌ها لایسنس تهیه کنید و برای دریافت پشتیبانی تیکت ارسال نمایید.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-               <a href="https://wumpus.ir/product/donatron/" target="_blank" className="flex items-center justify-center gap-2 px-6 py-2 bg-pink-500 text-white font-semibold rounded-lg hover:bg-pink-600 transition">
+               {/* <a href="https://wumpus.ir/product/donatron/" target="_blank" className="flex items-center justify-center gap-2 px-6 py-2 bg-pink-500 text-white font-semibold rounded-lg hover:bg-pink-600 transition">
                 <Gem size={18} /> خرید لایسنس
-              </a>
+              </a> */}
               <a href="https://t.me/+RPHxvGTsumxiNTA0" target="_blank" className="flex items-center justify-center gap-2 px-6 py-2 bg-sky-500 text-white font-semibold rounded-lg hover:bg-sky-600 transition">
                 <MessageCircleMore size={18} /> پشتیبانی تلگرام
               </a>

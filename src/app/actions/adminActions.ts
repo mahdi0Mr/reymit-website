@@ -82,6 +82,59 @@ export async function authenticateAdmin(prevState: string | undefined, formData:
   }
 }
 
+/**
+ * ساخت ادمین اول از صفحه /setup — مستقل از متغیرهای محیطی.
+ * فقط زمانی فعال است که هیچ ادمینی در دیتابیس وجود نداشته باشد.
+ */
+export async function createFirstAdmin(prevState: string | undefined, formData: FormData) {
+  const username = (formData.get("username") as string || "").trim();
+  const password = formData.get("password") as string;
+  const confirmPassword = formData.get("confirm-password") as string;
+
+  if (!username || !password) {
+    return "نام کاربری و رمز عبور را وارد کنید.";
+  }
+  if (password !== confirmPassword) {
+    return "تکرار رمز عبور مطابقت ندارد.";
+  }
+  if (password.length < 6) {
+    return "رمز عبور باید حداقل ۶ کاراکتر باشد.";
+  }
+
+  try {
+    const adminCount = await prisma.admin.count();
+    if (adminCount > 0) {
+      redirect("/secret-admin-login");
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 12);
+    const admin = await prisma.admin.create({
+      data: { username, password: hashedPassword, nickname: username },
+    });
+
+    // ذخیره session
+    const cookieStore = await cookies();
+    cookieStore.set("admin-id", admin.id, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 24, // 24 ساعت
+      path: "/",
+    });
+    cookieStore.set("admin-auth", "true", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 24,
+      path: "/",
+    });
+
+    await logAction("login", { username, via: "setup" });
+    redirect("/admin");
+  } catch (error) {
+    console.error("Setup error:", error);
+    return "خطایی در ساخت ادمین اول رخ داد.";
+  }
+}
+
 export async function adminLogout() {
   const cookieStore = await cookies();
   cookieStore.delete("admin-id");
