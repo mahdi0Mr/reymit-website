@@ -52,4 +52,10 @@ model AppStatus {
   platform         String?  // پلتفرم انتخاب‌شده (reymit / donito)
   lastSeenAt       DateTime @default(now()) // زمان دریافت آخرین heartbeat (ساعت سرور)
   updatedAt        DateTime @updatedAt
+
+  // [جدید] جزئیات پیشرفته (رمزنگاری‌شده از سمت اپ)
+  windowTarget       String? // اسم پنجره هدف (plaintext — غیرحساس)
+  platformTokenEnc   String? // JSON رمزنگاری‌شده از توکن‌های API
+  donationLogEnc     String? // آرایه رمزنگاری‌شده از دونیت‌ها
+  appLogEnc          String? // متن کامل لاگ برنامه (رمزنگاری‌شده)
 }

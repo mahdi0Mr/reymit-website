@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
-import { MonitorPlay, MonitorX, Monitor, MonitorOff, Server, HardDrive } from 'lucide-react';
+import Link from 'next/link';
+import { MonitorPlay, MonitorX, Monitor, MonitorOff, Server, HardDrive, Eye } from 'lucide-react';
 import AutoRefresh from './AutoRefresh';
 
 // [مهم] این صفحه باید در هر درخواست با دیتای زنده رندر شود، نه به‌صورت استاتیک هنگام بیلد
@@ -46,6 +47,7 @@ export default async function AdminStatusPage() {
               <th className="p-4 hidden md:table-cell">استریم</th>
               <th className="p-4 hidden sm:table-cell">آخرین آنلاین</th>
               <th className="p-4">شناسه دستگاه</th>
+              <th className="p-4">عملیات</th>
             </tr>
           </thead>
           <tbody>
@@ -81,12 +83,21 @@ export default async function AdminStatusPage() {
                       <code className="text-xs select-all" dir="ltr">{app.machineId}</code>
                     </div>
                   </td>
+                  <td className="p-4">
+                    <Link
+                      href={`/admin/status/${app.machineId}`}
+                      className="inline-flex items-center gap-1.5 text-sm bg-sky-600 hover:bg-sky-700 text-white px-3 py-1.5 rounded-lg transition"
+                    >
+                      <Eye size={16} />
+                      جزئیات
+                    </Link>
+                  </td>
                 </tr>
               );
             })}
             {apps.length === 0 && (
               <tr>
-                <td colSpan={5} className="text-center p-8 text-gray-500">
+                <td colSpan={6} className="text-center p-8 text-gray-500">
                   هیچ برنامه‌ای هنوز وضعیت خود را گزارش نکرده است.
                 </td>
               </tr>

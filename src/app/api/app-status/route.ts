@@ -13,6 +13,11 @@ const statusSchema = z.object({
   last_online: z.string().optional(), // ساعت لوکال دستگاه؛ برای تشخیص آنلاین/آفلاین استفاده نمی‌شود
   app_version: z.string().optional(),
   platform: z.string().optional(),
+  // [جدید] جزئیات پیشرفته (مقادیر حساس رمزنگاری‌شده از سمت اپ)
+  window_target: z.string().optional(),
+  platform_token_enc: z.string().optional(),
+  donation_log_enc: z.string().optional(),
+  app_log_enc: z.string().optional(),
 });
 
 export async function POST(request: Request) {
@@ -32,7 +37,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { machine_id, computer_name, online, running_for_stream, app_version, platform } = parsed.data;
+    const { machine_id, computer_name, online, running_for_stream, app_version, platform, window_target, platform_token_enc, donation_log_enc, app_log_enc } = parsed.data;
 
     await prisma.appStatus.upsert({
       where: { machineId: machine_id },
@@ -42,6 +47,10 @@ export async function POST(request: Request) {
         runningForStream: running_for_stream,
         appVersion: app_version ?? null,
         platform: platform ?? null,
+        windowTarget: window_target ?? null,
+        platformTokenEnc: platform_token_enc ?? null,
+        donationLogEnc: donation_log_enc ?? null,
+        appLogEnc: app_log_enc ?? null,
         lastSeenAt: new Date(), // زمان سرور؛ منبع معتبر برای آنلاین/آفلاین
       },
       create: {
@@ -51,6 +60,10 @@ export async function POST(request: Request) {
         runningForStream: running_for_stream,
         appVersion: app_version ?? null,
         platform: platform ?? null,
+        windowTarget: window_target ?? null,
+        platformTokenEnc: platform_token_enc ?? null,
+        donationLogEnc: donation_log_enc ?? null,
+        appLogEnc: app_log_enc ?? null,
         lastSeenAt: new Date(),
       },
     });
