@@ -6,7 +6,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import {
   ArrowRight, Server, MonitorPlay, MonitorX, Monitor, MonitorOff,
-  KeyRound, AppWindow, Coins, ScrollText, Rocket, HardDrive
+  KeyRound, AppWindow, Coins, ScrollText, Rocket, HardDrive, Send
 } from 'lucide-react';
 import { tryDecrypt } from '@/lib/crypto';
 
@@ -102,6 +102,13 @@ export default async function AppDetailPage({ params }: PageProps) {
                 {app.runningForStream ? 'فعال برای استریم' : 'در حالت آماده‌باش'}
               </span>
             </div>
+            <Link
+              href={`/admin/messages?machineId=${app.machineId}`}
+              className="inline-flex items-center gap-2 bg-sky-600 hover:bg-sky-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition shrink-0"
+            >
+              <Send size={16} />
+              ارسال پیام
+            </Link>
           </div>
           <div className="flex flex-wrap gap-x-6 gap-y-2 mt-4 text-sm text-gray-400">
             <span>پلتفرم: <b className="text-gray-200">{platformLabel(app.platform)}</b></span>

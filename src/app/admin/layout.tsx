@@ -21,6 +21,9 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
             <Link href="/admin/upload" className="text-gray-300 hover:text-white">
               آپلود نسخه
             </Link>
+            <Link href="/admin/messages" className="text-gray-300 hover:text-white">
+              پیام به برنامه‌ها
+            </Link>
             <form action={adminLogout}>
               <button 
                   type="submit" 

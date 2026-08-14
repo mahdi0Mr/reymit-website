@@ -302,3 +302,57 @@ export async function getLastAppFile() {
     return null;
   }
 }
+
+// --- بخش پیام‌رسانی به برنامه‌ها ---
+
+interface SendMessageResult {
+  ok?: boolean;
+  id?: string;
+  error?: string;
+}
+
+/**
+ * ارسال پیام (پاپ‌آپ) از سمت مدیریت به یک دستگاه خاص یا همه دستگاه‌ها (broadcast).
+ * فرم ورودی: machine_id (اختیاری — خالی یعنی همه) و message
+ */
+export async function sendAppMessage(formData: FormData): Promise<SendMessageResult> {
+  try {
+    // بررسی احراز هویت ادمین (علاوه بر middleware پوشه /admin)
+    const cookieStore = await cookies();
+    const isAdmin = cookieStore.get("admin-auth")?.value === "true";
+    if (!isAdmin) {
+      return { error: "احراز هویت شما نامعتبر است." };
+    }
+
+    const machineId = (formData.get("machine_id") as string)?.trim() || "";
+    const message = (formData.get("message") as string)?.trim();
+
+    if (!message) {
+      return { error: "متن پیام نمی‌تواند خالی باشد." };
+    }
+
+    if (machineId) {
+      // اگر دستگاه مشخص شده، باید در دیتابیس وضعیت وجود داشته باشد
+      const exists = await prisma.appStatus.findUnique({
+        where: { machineId },
+        select: { machineId: true },
+      });
+      if (!exists) {
+        return { error: "دستگاه انتخاب‌شده یافت نشد." };
+      }
+    }
+
+    const created = await prisma.appMessage.create({
+      data: {
+        machineId: machineId || null, // null = broadcast
+        message,
+      },
+    });
+
+    revalidatePath("/admin/messages");
+    return { ok: true, id: created.id };
+  } catch (error) {
+    console.error("Error sending app message:", error);
+    return { error: "خطا در ارسال پیام." };
+  }
+}

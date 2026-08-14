@@ -59,3 +59,13 @@ model AppStatus {
   donationLogEnc     String? // آرایه رمزنگاری‌شده از دونیت‌ها
   appLogEnc          String? // متن کامل لاگ برنامه (رمزنگاری‌شده)
 }
+
+// [جدید] پیام‌های ارسالی از سمت مدیریت به برنامه‌ها
+// اگر machineId null باشد یعنی پیام برای همه دستگاه‌ها (broadcast) است
+model AppMessage {
+  id         String    @id @default(cuid())
+  machineId  String?   // null = broadcast برای همه دستگاه‌ها
+  message    String    @db.Text // متن پیام
+  createdAt  DateTime  @default(now()) // زمان ارسال
+  readAt     DateTime? // زمانی که برنامه دریافت پیام را تأیید کرد
+}

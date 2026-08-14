@@ -18,6 +18,8 @@ const statusSchema = z.object({
   platform_token_enc: z.string().optional(),
   donation_log_enc: z.string().optional(),
   app_log_enc: z.string().optional(),
+  // [جدید] شناسه پیام‌هایی که برنامه دریافت کرده (برای علامت‌گذاری readAt)
+  processed_message_ids: z.array(z.string()).optional(),
 });
 
 export async function POST(request: Request) {
@@ -37,7 +39,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { machine_id, computer_name, online, running_for_stream, app_version, platform, window_target, platform_token_enc, donation_log_enc, app_log_enc } = parsed.data;
+    const { machine_id, computer_name, online, running_for_stream, app_version, platform, window_target, platform_token_enc, donation_log_enc, app_log_enc, processed_message_ids } = parsed.data;
 
     await prisma.appStatus.upsert({
       where: { machineId: machine_id },
@@ -68,7 +70,31 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ ok: true });
+    // [جدید] علامت‌گذاری پیام‌های دریافت‌شده (تأیید تحویل از سمت اپ)
+    if (processed_message_ids && processed_message_ids.length > 0) {
+      await prisma.appMessage.updateMany({
+        where: { id: { in: processed_message_ids } },
+        data: { readAt: new Date() },
+      });
+    }
+
+    // [جدید] دریافت پیام‌های در انتظار برای این دستگاه (مشخص یا broadcast)
+    const pendingMessages = await prisma.appMessage.findMany({
+      where: {
+        readAt: null,
+        OR: [
+          { machineId: machine_id },
+          { machineId: null }, // broadcast برای همه
+        ],
+      },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true, message: true },
+    });
+
+    return NextResponse.json({
+      ok: true,
+      messages: pendingMessages.map((m) => ({ id: m.id, message: m.message })),
+    });
   } catch (err) {
     console.error("Error saving app status:", err);
     return NextResponse.json({ error: "خطا در ذخیره وضعیت." }, { status: 500 });
