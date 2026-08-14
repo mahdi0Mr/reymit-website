@@ -1,7 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
-// آیکون Ticket را اضافه کنید
-import { Download, Gem, Link, ShieldCheck, Gamepad2, Palette, Ticket } from 'lucide-react'; 
+// آیکون Telegram را اضافه کنید
+import { Download, Gem, ShieldCheck, Gamepad2, Palette, MessageCircleMore, Ticket } from 'lucide-react'; 
 // کامپوننت فرم پیگیری را وارد کنید
 import TrackTicketForm from '@/app/components/TrackTicketForm'; 
 
@@ -105,6 +105,9 @@ export default async function HomePage() {
             <div className="flex flex-col sm:flex-row gap-4">
                <a href="https://wumpus.ir/product/donatron/" target="_blank" className="flex items-center justify-center gap-2 px-6 py-2 bg-pink-500 text-white font-semibold rounded-lg hover:bg-pink-600 transition">
                 <Gem size={18} /> خرید لایسنس
+              </a>
+              <a href="https://t.me/+RPHxvGTsumxiNTA0" target="_blank" className="flex items-center justify-center gap-2 px-6 py-2 bg-sky-500 text-white font-semibold rounded-lg hover:bg-sky-600 transition">
+                <MessageCircleMore size={18} /> پشتیبانی تلگرام
               </a>
               {/* [تغییر] لینک دیسکورد با لینک ارسال تیکت جایگزین شد */}
               <a href="/support" className="flex items-center justify-center gap-2 px-6 py-2 border border-gray-500 text-gray-300 font-semibold rounded-lg hover:bg-gray-700 transition">

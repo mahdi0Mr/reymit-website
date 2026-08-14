@@ -1,11 +1,9 @@
 "use client";
 
-// [تغییر ۱] هوک‌ها را از 'react' وارد کنید
-import { useActionState, useOptimistic, useTransition, startTransition } from 'react'; // useFormStatus هم بخشی از react است
+import { useActionState } from 'react';
 import { authenticateAdmin } from '../actions/adminActions';
-import { useFormStatus } from 'react-dom'; // useFormStatus همچنان از react-dom وارد می‌شود، تصحیح شد
+import { useFormStatus } from 'react-dom';
 
-// یک کامپوننت جدا برای دکمه می‌سازیم تا وضعیت pending را مدیریت کند
 function LoginButton() {
   const { pending } = useFormStatus();
   return (
@@ -20,7 +18,6 @@ function LoginButton() {
 }
 
 export default function LoginForm() {
-  // [تغییر ۲] نام هوک را به useActionState تغییر دهید
   const [errorMessage, dispatch] = useActionState(authenticateAdmin, undefined);
 
   return (
@@ -29,13 +26,25 @@ export default function LoginForm() {
         <p className="text-red-400 text-center">{errorMessage}</p>
       )}
       <div>
-        <label htmlFor="password">رمز عبور ادمین</label>
+        <label htmlFor="username" className="block mb-1 font-bold">نام کاربری</label>
+        <input 
+          type="text" 
+          name="username"
+          id="username" 
+          className="w-full bg-[#1e1e2e] border border-gray-600 rounded-md p-2 mt-1" 
+          required
+          autoComplete="username"
+        />
+      </div>
+      <div>
+        <label htmlFor="password" className="block mb-1 font-bold">رمز عبور</label>
         <input 
           type="password" 
-          name="password" // name برای FormData ضروری است
+          name="password"
           id="password" 
           className="w-full bg-[#1e1e2e] border border-gray-600 rounded-md p-2 mt-1" 
           required
+          autoComplete="current-password"
         />
       </div>
       <LoginButton />

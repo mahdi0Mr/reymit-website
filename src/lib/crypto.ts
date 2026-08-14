@@ -1,4 +1,4 @@
-import { createDecipheriv } from 'crypto';
+import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 
 // کلید رمزنگاری — باید با SECRET_KEY در برنامه Python (main.py) یکسان باشد.
 // با تمام شدن، از متغیر محیطی ENCRYPTION_SECRET استفاده شود.
@@ -33,4 +33,21 @@ export function tryDecrypt<T>(encryptedBase64: string | null | undefined): T | n
   } catch {
     return null;
   }
+}
+
+/**
+ * تولید لایسنس با AES-256-CBC (همان فرمت LicenseManager در برنامه Python)
+ * فرمت: base64(IV + AES-CBC(machineId|YYYY-MM-DD))
+ * کلید: MySuperSecretKeyForReymitApp!@#$
+ */
+export function generateLicense(machineId: string, expiryDate: Date): string {
+  const expiryStr = expiryDate.toISOString().split('T')[0]; // YYYY-MM-DD
+  const plaintext = `${machineId}|${expiryStr}`;
+  const iv = randomBytes(16);
+  const cipher = createCipheriv('aes-256-cbc', KEY, iv);
+  const encrypted = Buffer.concat([
+    cipher.update(plaintext, 'utf-8'),
+    cipher.final(),
+  ]);
+  return Buffer.concat([iv, encrypted]).toString('base64');
 }

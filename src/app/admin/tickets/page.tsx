@@ -2,6 +2,8 @@ import prisma from '@/lib/prisma';
 import Link from 'next/link';
 import { Eye, Clock, CheckCircle, XCircle } from 'lucide-react';
 
+export const dynamic = 'force-dynamic';
+
 // تابعی برای دریافت آیکون و رنگ بر اساس وضعیت تیکت
 const getStatusBadge = (status: string) => {
   switch (status) {

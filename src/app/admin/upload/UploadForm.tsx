@@ -14,6 +14,7 @@ export default function UploadForm() {
 
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // گرفتن آخرین نسخه در بار اول
   useEffect(() => {
@@ -31,21 +32,31 @@ export default function UploadForm() {
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    setError("");
     setStatus("");
+    setError("");
+    setIsSubmitting(true);
 
     if (!version || !changelog) {
       setError("لطفا فیلدهای نسخه و تغییرات را پر کنید.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    const file = inputFileRef.current?.files?.[0];
+
+    // یکی از سه گزینه باید انتخاب شود: آپلود فایل جدید، لینک کاستوم، یا حفظ لینک قبلی
+    if (!file && !customLink.trim() && !fileUrl) {
+      setError("برای انتشار نسخه، باید فایل آپلود کنید، لینک دانلود وارد کنید، یا نسخه قبلی را حفظ کنید.");
+      setIsSubmitting(false);
       return;
     }
 
     setStatus("در حال پردازش...");
 
     try {
-      let finalUrl = customLink || fileUrl;
+      let finalUrl = customLink.trim() || fileUrl;
       let finalFileName = fileName;
 
-      const file = inputFileRef.current?.files?.[0];
       if (file) {
         setStatus("در حال آپلود فایل جدید...");
         const newBlob = await upload(file.name, file, {
@@ -69,10 +80,12 @@ export default function UploadForm() {
       } else {
         setStatus("نسخه با موفقیت ثبت یا به‌روزرسانی شد!");
       }
+      setIsSubmitting(false);
     } catch (err: unknown) {
       if (err instanceof Error) setError(`خطا: ${err.message}`);
       else setError("یک خطای ناشناخته رخ داد.");
       setStatus("");
+      setIsSubmitting(false);
     }
   };
 
@@ -115,7 +128,7 @@ export default function UploadForm() {
           placeholder="هر تغییر را در یک خط جدید بنویسید..." required/>
       </div>
 
-      <button type="submit" disabled={!!status && !error}
+      <button type="submit" disabled={isSubmitting}
         className="w-full bg-sky-500 text-white font-bold py-3 rounded-lg hover:bg-sky-600 transition disabled:bg-gray-500 disabled:cursor-not-allowed">
         {fileUrl ? "ویرایش نسخه" : "ایجاد نسخه جدید"}
       </button>

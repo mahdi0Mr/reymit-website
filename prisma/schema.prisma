@@ -69,3 +69,48 @@ model AppMessage {
   createdAt  DateTime  @default(now()) // زمان ارسال
   readAt     DateTime? // زمانی که برنامه دریافت پیام را تأیید کرد
 }
+
+// [جدید] ادمین‌های پنل مدیریت (سیستم چند ادمینه)
+model Admin {
+  id          String       @id @default(cuid())
+  username    String       @unique
+  password    String       // bcrypt hashed
+  nickname    String       // نام نمایشی
+  isActive    Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  permissions Permission[]
+  auditLogs   AuditLog[]
+  licenses    GeneratedLicense[]
+}
+
+// [جدید] دسترسی‌های هر ادمین (سیستم نقش با مجوزهای دلخواه)
+model Permission {
+  id       String @id @default(cuid())
+  adminId  String
+  admin    Admin  @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  action   String // e.g. "manage_admins", "view_status", "send_messages", ...
+  @@unique([adminId, action])
+}
+
+// [جدید] تاریخچه فعالیت‌های ادمین‌ها
+model AuditLog {
+  id        String   @id @default(cuid())
+  adminId   String?
+  admin     Admin?   @relation(fields: [adminId], references: [id])
+  action    String   // e.g. "login", "upload_version", "create_admin", "generate_license"
+  details   String?  // JSON با جزئیات بیشتر
+  ip        String?
+  createdAt DateTime @default(now())
+}
+
+// [جدید] لایسنس‌های تولید شده در سایت
+model GeneratedLicense {
+  id         String   @id @default(cuid())
+  machineId  String
+  licenseKey String   @unique
+  expiryDate DateTime
+  adminId    String?
+  admin      Admin?   @relation(fields: [adminId], references: [id])
+  createdAt  DateTime @default(now())
+}

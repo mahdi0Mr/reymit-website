@@ -1,6 +1,8 @@
 import prisma from "@/lib/prisma";
 import { Download } from "lucide-react";
 
+export const dynamic = 'force-dynamic';
+
 async function getLatestFile() {
   const latestFile = await prisma.appFile.findFirst({
     orderBy: { releaseDate: 'desc' },

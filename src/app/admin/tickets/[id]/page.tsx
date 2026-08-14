@@ -4,6 +4,8 @@ import ReplyForm from '../../../components/ReplyForm';
 import { notFound } from 'next/navigation';
 import React from 'react';
 
+export const dynamic = 'force-dynamic';
+
 type Params = { id: string };
 
 interface PageProps {

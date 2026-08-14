@@ -16,9 +16,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // تشخیص دامنه از request
-    const origin = request.nextUrl.origin; 
-    const downloadUrl = `${origin}${latestApp.url}`;
+    // استفاده از URL مستقیم (اگر نسبی باشد origin اضافه می‌شود)
+    const origin = request.nextUrl.origin;
+    const downloadUrl = latestApp.url.startsWith('http') ? latestApp.url : `${origin}${latestApp.url}`;
 
     // تبدیل changelog به آرایه
     let changelogArray: string[] = [];
@@ -31,10 +31,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({
-      latest_version: latestApp.version + " \n",
-      release_date: new Date(latestApp.releaseDate).toLocaleDateString("fa-IR") + " \n",
-      download_url: downloadUrl + " \n",
-      changelog: changelogArray+ " \n",
+      latest_version: latestApp.version,
+      release_date: new Date(latestApp.releaseDate).toLocaleDateString("fa-IR"),
+      download_url: downloadUrl,
+      changelog: changelogArray,
     });
   } catch (err) {
     console.error("Error fetching latest version:", err);
