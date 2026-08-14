@@ -1,5 +1,9 @@
 import prisma from '@/lib/prisma';
 import { MonitorPlay, MonitorX, Monitor, MonitorOff, Server, HardDrive } from 'lucide-react';
+import AutoRefresh from './AutoRefresh';
+
+// [مهم] این صفحه باید در هر درخواست با دیتای زنده رندر شود، نه به‌صورت استاتیک هنگام بیلد
+export const dynamic = 'force-dynamic';
 
 // [جدید] لیست وضعیت برنامه‌های در حال اجرای کنترلر دونیت
 // اگر اپ بیش از ۲ دقیقه heartbeat نفرستاده باشد (کرش یا بسته شدن ناگهانی)، آفلاین محسوب می‌شود
@@ -27,6 +31,7 @@ export default async function AdminStatusPage() {
 
   return (
     <div className="container mx-auto px-4 py-12">
+      <AutoRefresh />
       <h1 className="text-3xl font-bold mb-2">وضعیت برنامه‌ها</h1>
       <p className="text-gray-400 mb-8">
         لیست دستگاه‌هایی که نسخه کنترلر دونیت روی آن‌ها نصب و در حال اجراست.
