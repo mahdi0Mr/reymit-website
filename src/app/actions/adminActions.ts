@@ -14,7 +14,7 @@ import { logAction } from "@/lib/audit";
 
 // --- بخش احراز هویت ادمین (چند ادمینه با نام کاربری و رمز عبور) ---
 export async function authenticateAdmin(prevState: string | undefined, formData: FormData) {
-  const username = formData.get("username") as string;
+  const username = (formData.get("username") as string).trim();
   const password = formData.get("password") as string;
 
   if (!username || !password) {
@@ -25,10 +25,17 @@ export async function authenticateAdmin(prevState: string | undefined, formData:
     // بررسی وجود ادمین در دیتابیس
     let admin = await prisma.admin.findUnique({ where: { username } });
 
-    // اگر هیچ ادمینی در دیتابیس وجود نداشته باشد، اولین ورود با متغیر محیطی ساخته می‌شود
+    // اگر هیچ ادمینی در دیتابیس وجود نداشته باشد، اولین ورود ادمین اولیه را می‌سازد.
+    // اگر متغیرهای محیطی ADMIN_USERNAME/ADMIN_PASSWORD تنظیم شده باشند باید دقیقاً مطابقت داشته باشند؛
+    // در غیر این صورت (عدم وجود متغیرهای محیطی) با همان نام کاربری و رمز واردشده، ادمین اول ساخته می‌شود
+    // تا ورود در اولین راه‌اندازی هرگز قفل نشود.
     if (!admin) {
       const adminCount = await prisma.admin.count();
-      if (adminCount === 0 && username === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD) {
+      if (adminCount === 0) {
+        if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD &&
+            (username !== process.env.ADMIN_USERNAME || password !== process.env.ADMIN_PASSWORD)) {
+          return "نام کاربری یا رمز عبور نامعتبر است.";
+        }
         // ساخت اولین ادمین (سوپر ادمین)
         const hashedPassword = await bcrypt.hash(password, 12);
         admin = await prisma.admin.create({
