@@ -83,36 +83,57 @@ export async function authenticateAdmin(prevState: string | undefined, formData:
 }
 
 /**
- * ساخت ادمین اول از صفحه /setup — مستقل از متغیرهای محیطی.
- * فقط زمانی فعال است که هیچ ادمینی در دیتابیس وجود نداشته باشد.
+ * راه‌اندازی اولیه / بازیابی ادمین از صفحه /setup
+ * - اگر هیچ ادمینی وجود نداشته باشد: ساختن اولین ادمین (در صورت تنظیم env، باید دقیقاً مطابقت داشته باشد)
+ * - اگر ادمین وجود داشته باشد: فقط با تطبیق دقیق با ADMIN_USERNAME/ADMIN_PASSWORD رمز ادمین بازنشانی می‌شود
  */
-export async function createFirstAdmin(prevState: string | undefined, formData: FormData) {
+export async function setupFirstAdmin(prevState: string | undefined, formData: FormData) {
   const username = (formData.get("username") as string || "").trim();
   const password = formData.get("password") as string;
   const confirmPassword = formData.get("confirm-password") as string;
 
-  if (!username || !password) {
-    return "نام کاربری و رمز عبور را وارد کنید.";
+  if (!username || !password || !confirmPassword) {
+    return "نام کاربری، رمز عبور و تکرار آن را وارد کنید.";
   }
   if (password !== confirmPassword) {
     return "تکرار رمز عبور مطابقت ندارد.";
   }
-  if (password.length < 6) {
-    return "رمز عبور باید حداقل ۶ کاراکتر باشد.";
-  }
 
   try {
     const adminCount = await prisma.admin.count();
+
     if (adminCount > 0) {
-      redirect("/secret-admin-login");
+      // حالت بازیابی: فقط با مطابقت دقیق با متغیرهای محیطی
+      if (!process.env.ADMIN_USERNAME || !process.env.ADMIN_PASSWORD) {
+        return "متغیرهای محیطی ADMIN_USERNAME و ADMIN_PASSWORD در سرور قابل مشاهده نیستند. لطفاً آن‌ها را برای محیط Production در Vercel تنظیم و یک Deploy جدید بگیرید.";
+      }
+      if (username !== process.env.ADMIN_USERNAME || password !== process.env.ADMIN_PASSWORD) {
+        return "اطلاعات واردشده با متغیرهای محیطی مطابقت ندارد.";
+      }
+      const hashedPassword = await bcrypt.hash(password, 12);
+      const existing = await prisma.admin.findUnique({ where: { username } });
+      if (existing) {
+        await prisma.admin.update({ where: { id: existing.id }, data: { password: hashedPassword, isActive: true } });
+      } else {
+        await prisma.admin.create({ data: { username, password: hashedPassword, nickname: username } });
+      }
+      await logAction("reset_admin_password", { username });
+    } else {
+      // حالت ایجاد اولین ادمین (در صورت تنظیم env باید دقیقاً مطابقت داشته باشد)
+      if (process.env.ADMIN_USERNAME && process.env.ADMIN_PASSWORD &&
+          (username !== process.env.ADMIN_USERNAME || password !== process.env.ADMIN_PASSWORD)) {
+        return "اطلاعات واردشده با متغیرهای محیطی مطابقت ندارد.";
+      }
+      const hashedPassword = await bcrypt.hash(password, 12);
+      await prisma.admin.create({ data: { username, password: hashedPassword, nickname: username } });
+      await logAction("login", { username, via: "setup" });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 12);
-    const admin = await prisma.admin.create({
-      data: { username, password: hashedPassword, nickname: username },
-    });
-
-    // ذخیره session
+    // بارگذاری ادمین و ساخت نشست
+    const admin = await prisma.admin.findUnique({ where: { username } });
+    if (!admin) {
+      return "خطایی در ساخت ادمین رخ داد.";
+    }
     const cookieStore = await cookies();
     cookieStore.set("admin-id", admin.id, {
       httpOnly: true,
@@ -127,11 +148,10 @@ export async function createFirstAdmin(prevState: string | undefined, formData: 
       path: "/",
     });
 
-    await logAction("login", { username, via: "setup" });
     redirect("/admin");
   } catch (error) {
     console.error("Setup error:", error);
-    return "خطایی در ساخت ادمین اول رخ داد.";
+    return "خطایی در راه‌اندازی اولیه رخ داد.";
   }
 }
 

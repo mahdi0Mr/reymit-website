@@ -1,10 +1,10 @@
 "use client";
 
 import { useActionState } from "react";
-import { createFirstAdmin } from "../actions/adminActions";
+import { setupFirstAdmin } from "../actions/adminActions";
 import { useFormStatus } from "react-dom";
 
-function SetupButton() {
+function SetupButton({ mode }: { mode: "create" | "recover" }) {
   const { pending } = useFormStatus();
   return (
     <button
@@ -12,13 +12,13 @@ function SetupButton() {
       className="w-full bg-sky-500 font-bold py-2 rounded-lg hover:bg-sky-600 transition disabled:bg-gray-500"
       disabled={pending}
     >
-      {pending ? "در حال ساخت..." : "ساخت ادمین و ورود"}
+      {pending ? "در حال پردازش..." : mode === "create" ? "ساخت ادمین و ورود" : "بازنشانی رمز و ورود"}
     </button>
   );
 }
 
-export default function SetupForm() {
-  const [errorMessage, dispatch] = useActionState(createFirstAdmin, undefined);
+export default function SetupForm({ mode }: { mode: "create" | "recover" }) {
+  const [errorMessage, dispatch] = useActionState(setupFirstAdmin, undefined);
 
   return (
     <form action={dispatch} className="bg-[#2a2a40] p-8 rounded-lg border border-gray-700 space-y-4">
@@ -60,7 +60,7 @@ export default function SetupForm() {
           autoComplete="new-password"
         />
       </div>
-      <SetupButton />
+      <SetupButton mode={mode} />
     </form>
   );
 }
