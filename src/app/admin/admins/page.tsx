@@ -1,10 +1,16 @@
 // src/app/admin/admins/page.tsx
 import { getAdminsList } from "@/app/actions/adminActions";
+import { notFound } from "next/navigation";
+import { PERMISSIONS } from "@/lib/permissions";
+import { requirePermission } from "@/lib/permissions-server";
 import AdminList from "./AdminList";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminsPage() {
+  const permError = await requirePermission(PERMISSIONS.MANAGE_ADMINS);
+  if (permError) notFound();
+
   const admins = await getAdminsList();
 
   return (

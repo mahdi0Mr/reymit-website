@@ -1,5 +1,9 @@
 import Link from 'next/link';
 import { Ticket, UploadCloud, Monitor, MessageSquare, Users, KeyRound, ScrollText } from 'lucide-react';
+import { ROUTE_PERMISSION } from '@/lib/permissions';
+import { getCurrentAdminAccess } from '@/lib/permissions-server';
+
+export const dynamic = "force-dynamic";
 
 const cards = [
   {
@@ -53,7 +57,18 @@ const cards = [
   },
 ];
 
-export default function AdminDashboardPage() {
+export default async function AdminDashboardPage() {
+  const access = await getCurrentAdminAccess();
+
+  // فقط کارت‌هایی که ادمین دسترسی دارد نمایش داده می‌شود (سوپر ادمین همه را دارد)
+  const visibleCards = access
+    ? cards.filter((card) => {
+        if (access.isSuperAdmin) return true;
+        const required = ROUTE_PERMISSION[card.href];
+        return !!required && access.permissions.includes(required);
+      })
+    : [];
+
   return (
     <div className="container mx-auto px-4 py-12">
       <h1 className="text-3xl font-bold text-gray-200 mb-4">به داشبورد خوش آمدید</h1>
@@ -61,21 +76,29 @@ export default function AdminDashboardPage() {
         از منوی بالا یا کارت‌های زیر می‌توانید به بخش‌های مختلف پنل دسترسی داشته باشید.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {cards.map((card) => (
-          <Link
-            key={card.href}
-            href={card.href}
-            className={`block bg-[#2a2a40] p-8 rounded-lg border border-gray-700 ${card.hoverColor} transition-all duration-300 transform hover:-translate-y-1`}
-          >
-            <div className="flex items-center gap-4 mb-4">
-              {card.icon}
-              <h2 className="text-2xl font-bold">{card.title}</h2>
-            </div>
-            <p className="text-gray-400">{card.description}</p>
-          </Link>
-        ))}
-      </div>
+      {visibleCards.length === 0 ? (
+        <div className="bg-[#2a2a40] p-10 rounded-lg border border-gray-700 text-center">
+          <p className="text-gray-400 text-lg">
+            برای این حساب هیچ دسترسی‌ای تنظیم نشده است. برای دریافت دسترسی با مدیر اصلی تماس بگیرید.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          {visibleCards.map((card) => (
+            <Link
+              key={card.href}
+              href={card.href}
+              className={`block bg-[#2a2a40] p-8 rounded-lg border border-gray-700 ${card.hoverColor} transition-all duration-300 transform hover:-translate-y-1`}
+            >
+              <div className="flex items-center gap-4 mb-4">
+                {card.icon}
+                <h2 className="text-2xl font-bold">{card.title}</h2>
+              </div>
+              <p className="text-gray-400">{card.description}</p>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

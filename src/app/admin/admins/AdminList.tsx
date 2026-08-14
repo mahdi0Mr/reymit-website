@@ -12,6 +12,7 @@ interface AdminWithPermissions {
   username: string;
   nickname: string;
   isActive: boolean;
+  isSuperAdmin?: boolean;
   createdAt: Date;
   permissions: { action: string }[];
   _count: { auditLogs: number; licenses: number };
@@ -54,6 +55,7 @@ export default function AdminList({ admins: initialAdmins }: { admins: AdminWith
     username: string;
     password: string;
     nickname: string;
+    isSuperAdmin: boolean;
     permissions: string[];
   }) => {
     setError("");
@@ -64,6 +66,7 @@ export default function AdminList({ admins: initialAdmins }: { admins: AdminWith
         username: data.username,
         password: data.password || undefined,
         nickname: data.nickname,
+        isSuperAdmin: data.isSuperAdmin,
         permissions: data.permissions,
       });
       if (result.error) {
@@ -76,6 +79,7 @@ export default function AdminList({ admins: initialAdmins }: { admins: AdminWith
         username: data.username,
         password: data.password,
         nickname: data.nickname,
+        isSuperAdmin: data.isSuperAdmin,
         permissions: data.permissions,
       });
       if (result.error) {
@@ -154,7 +158,7 @@ export default function AdminList({ admins: initialAdmins }: { admins: AdminWith
                   <td className="p-4 text-gray-400">{admin.username}</td>
                   <td className="p-4">
                     <div className="flex flex-wrap gap-1">
-                      {admin.permissions.length === 0 ? (
+                      {admin.isSuperAdmin ? (
                         <span className="bg-purple-700 text-purple-200 text-xs px-2 py-1 rounded">
                           سوپر ادمین
                         </span>

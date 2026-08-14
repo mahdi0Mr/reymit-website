@@ -9,6 +9,7 @@ interface AdminFormProps {
     id: string;
     username: string;
     nickname: string;
+    isSuperAdmin?: boolean;
     permissions: { action: string }[];
   } | null;
   onSubmit: (data: {
@@ -16,6 +17,7 @@ interface AdminFormProps {
     username: string;
     password: string;
     nickname: string;
+    isSuperAdmin: boolean;
     permissions: string[];
   }) => Promise<void>;
   onCancel: () => void;
@@ -27,6 +29,7 @@ export default function AdminForm({ admin, onSubmit, onCancel }: AdminFormProps)
   const [username, setUsername] = useState(admin?.username || "");
   const [password, setPassword] = useState("");
   const [nickname, setNickname] = useState(admin?.nickname || "");
+  const [isSuperAdmin, setIsSuperAdmin] = useState(admin?.isSuperAdmin === true);
   const [selectedPermissions, setSelectedPermissions] = useState<Set<string>>(
     new Set(admin?.permissions.map((p) => p.action) || [])
   );
@@ -40,6 +43,7 @@ export default function AdminForm({ admin, onSubmit, onCancel }: AdminFormProps)
       username,
       password,
       nickname,
+      isSuperAdmin,
       permissions: Array.from(selectedPermissions),
     });
     setSubmitting(false);
@@ -110,8 +114,23 @@ export default function AdminForm({ admin, onSubmit, onCancel }: AdminFormProps)
       </div>
 
       <div>
+        <label className="flex items-center gap-3 cursor-pointer bg-[#1e1e2e] border border-gray-600 rounded-md p-3">
+          <input
+            type="checkbox"
+            checked={isSuperAdmin}
+            onChange={(e) => setIsSuperAdmin(e.target.checked)}
+            className="w-4 h-4"
+          />
+          <span className="font-bold">سوپر ادمین (دسترسی کامل به همه منوها)</span>
+        </label>
+        <p className="text-gray-400 text-sm mt-1">
+          سوپر ادمین به همه بخش‌ها دسترسی دارد و نیازی به انتخاب دسترسی تکی ندارد.
+        </p>
+      </div>
+
+      <div>
         <div className="flex justify-between items-center mb-2">
-          <label className="font-bold">دسترسی‌ها</label>
+          <label className="font-bold">دسترسی‌های تکی</label>
           <div className="flex gap-2 text-sm">
             <button type="button" onClick={selectAllPermissions} className="text-sky-400 hover:text-sky-300">
               انتخاب همه
@@ -134,11 +153,13 @@ export default function AdminForm({ admin, onSubmit, onCancel }: AdminFormProps)
               <span>{PERMISSION_LABELS[action]}</span>
             </label>
           ))}
-          {selectedPermissions.size === 0 && (
-            <p className="text-purple-400 text-sm mt-2">
-              ⚡ هیچ دسترسی‌ای انتخاب نشده = سوپر ادمین (دسترسی کامل)
-            </p>
-          )}
+          <p className="text-gray-500 text-sm mt-2">
+            {isSuperAdmin
+              ? "این ادمین سوپر ادمین است، پس دسترسی‌های تکی اعمال نمی‌شود."
+              : selectedPermissions.size === 0
+                ? "در صورت عدم انتخاب هیچ دسترسی‌ای، این ادمین هیچ منویی را نخواهد دید (فقط خروج)."
+                : "فقط منوهایی که دسترسی آنها انتخاب شده نمایش داده می‌شود."}
+          </p>
         </div>
       </div>
 

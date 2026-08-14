@@ -72,16 +72,17 @@ model AppMessage {
 
 // [جدید] ادمین‌های پنل مدیریت (سیستم چند ادمینه)
 model Admin {
-  id          String       @id @default(cuid())
-  username    String       @unique
-  password    String       // bcrypt hashed
-  nickname    String       // نام نمایشی
-  isActive    Boolean      @default(true)
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  permissions Permission[]
-  auditLogs   AuditLog[]
-  licenses    GeneratedLicense[]
+  id           String       @id @default(cuid())
+  username     String       @unique
+  password     String       // bcrypt hashed
+  nickname     String       // نام نمایشی
+  isActive     Boolean      @default(true)
+  isSuperAdmin Boolean      @default(false) // ادمین کامل — همه منوها و دسترسی‌ها
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  permissions  Permission[]
+  auditLogs    AuditLog[]
+  licenses     GeneratedLicense[]
 }
 
 // [جدید] دسترسی‌های هر ادمین (سیستم نقش با مجوزهای دلخواه)

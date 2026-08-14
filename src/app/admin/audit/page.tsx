@@ -1,5 +1,8 @@
 // src/app/admin/audit/page.tsx
 import { getAuditLogs } from "@/app/actions/adminActions";
+import { notFound } from "next/navigation";
+import { PERMISSIONS } from "@/lib/permissions";
+import { requirePermission } from "@/lib/permissions-server";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +20,9 @@ const ACTION_LABELS: Record<string, string> = {
 };
 
 export default async function AuditPage() {
+  const permError = await requirePermission(PERMISSIONS.VIEW_AUDIT);
+  if (permError) notFound();
+
   const logs = await getAuditLogs(0, 100);
 
   return (

@@ -40,7 +40,7 @@ export async function authenticateAdmin(prevState: string | undefined, formData:
         // ساخت اولین ادمین (سوپر ادمین)
         const hashedPassword = await bcrypt.hash(password, 12);
         admin = await prisma.admin.create({
-          data: { username, password: hashedPassword, nickname: username },
+          data: { username, password: hashedPassword, nickname: username, isSuperAdmin: true },
         });
       } else {
         return "نام کاربری یا رمز عبور نامعتبر است.";
@@ -115,9 +115,9 @@ export async function setupFirstAdmin(prevState: string | undefined, formData: F
       const hashedPassword = await bcrypt.hash(password, 12);
       const existing = await prisma.admin.findUnique({ where: { username } });
       if (existing) {
-        await prisma.admin.update({ where: { id: existing.id }, data: { password: hashedPassword, isActive: true } });
+        await prisma.admin.update({ where: { id: existing.id }, data: { password: hashedPassword, isActive: true, isSuperAdmin: true } });
       } else {
-        await prisma.admin.create({ data: { username, password: hashedPassword, nickname: username } });
+        await prisma.admin.create({ data: { username, password: hashedPassword, nickname: username, isSuperAdmin: true } });
       }
       await logAction("reset_admin_password", { username });
     } else {
@@ -127,7 +127,7 @@ export async function setupFirstAdmin(prevState: string | undefined, formData: F
         return "اطلاعات واردشده با متغیرهای محیطی مطابقت ندارد.";
       }
       const hashedPassword = await bcrypt.hash(password, 12);
-      await prisma.admin.create({ data: { username, password: hashedPassword, nickname: username } });
+      await prisma.admin.create({ data: { username, password: hashedPassword, nickname: username, isSuperAdmin: true } });
       await logAction("login", { username, via: "setup" });
     }
 
@@ -436,6 +436,9 @@ export async function saveAppVersion(data: AppFileData) {
 // گرفتن آخرین نسخه
 export async function getLastAppFile() {
   try {
+    const permError = await requirePermission(PERMISSIONS.UPLOAD_VERSIONS);
+    if (permError) return null;
+
     const lastFile = await prisma.appFile.findFirst({
       orderBy: { releaseDate: "desc" },
     });
@@ -514,6 +517,7 @@ export async function createAdmin(data: {
   password: string;
   nickname: string;
   permissions: string[];
+  isSuperAdmin?: boolean;
 }): Promise<AdminResult> {
   try {
     // بررسی دسترسی
@@ -530,13 +534,15 @@ export async function createAdmin(data: {
         username: data.username,
         password: hashedPassword,
         nickname: data.nickname,
+        isSuperAdmin: data.isSuperAdmin === true,
         permissions: {
-          create: data.permissions.map((action) => ({ action })),
+          // اگر سوپر ادمین باشد نیازی به ذخیره دسترسی‌های تکی نیست
+          create: data.isSuperAdmin === true ? [] : data.permissions.map((action) => ({ action })),
         },
       },
     });
 
-    await logAction("create_admin", { username: data.username, permissions: data.permissions });
+    await logAction("create_admin", { username: data.username, isSuperAdmin: data.isSuperAdmin === true, permissions: data.permissions });
     revalidatePath("/admin/admins");
     return { ok: true, id: admin.id };
   } catch (error) {
@@ -554,6 +560,7 @@ export async function updateAdmin(data: {
   password?: string;
   nickname: string;
   permissions: string[];
+  isSuperAdmin?: boolean;
 }): Promise<AdminResult> {
   try {
     const permError = await requirePermission(PERMISSIONS.MANAGE_ADMINS);
@@ -562,6 +569,7 @@ export async function updateAdmin(data: {
     const updateData: Record<string, unknown> = {
       username: data.username,
       nickname: data.nickname,
+      isSuperAdmin: data.isSuperAdmin === true,
     };
 
     if (data.password && data.password.length > 0) {
@@ -574,15 +582,15 @@ export async function updateAdmin(data: {
       data: updateData,
     });
 
-    // بازنویسی دسترسی‌ها
+    // بازنویسی دسترسی‌ها (برای سوپر ادمین دسترسی‌های تکی پاک می‌شود چون همه‌چیز را دارد)
     await prisma.permission.deleteMany({ where: { adminId: data.id } });
-    if (data.permissions.length > 0) {
+    if (data.isSuperAdmin !== true && data.permissions.length > 0) {
       await prisma.permission.createMany({
         data: data.permissions.map((action) => ({ adminId: data.id, action })),
       });
     }
 
-    await logAction("update_admin", { adminId: data.id, username: data.username, permissions: data.permissions });
+    await logAction("update_admin", { adminId: data.id, username: data.username, isSuperAdmin: data.isSuperAdmin === true, permissions: data.permissions });
     revalidatePath("/admin/admins");
     return { ok: true };
   } catch (error) {
@@ -647,6 +655,9 @@ export async function toggleAdminStatus(id: string, isActive: boolean): Promise<
  * دریافت لیست ادمین‌ها
  */
 export async function getAdminsList() {
+  const permError = await requirePermission(PERMISSIONS.MANAGE_ADMINS);
+  if (permError) return [];
+
   return prisma.admin.findMany({
     include: {
       permissions: { select: { action: true } },
@@ -660,6 +671,9 @@ export async function getAdminsList() {
  * دریافت اطلاعات یک ادمین
  */
 export async function getAdminById(id: string) {
+  const permError = await requirePermission(PERMISSIONS.MANAGE_ADMINS);
+  if (permError) return null;
+
   return prisma.admin.findUnique({
     where: { id },
     include: {
@@ -724,6 +738,9 @@ export async function generateLicenseKey(formData: FormData): Promise<LicenseRes
  * دریافت تاریخچه لایسنس‌های تولید شده
  */
 export async function getLicensesList() {
+  const permError = await requirePermission(PERMISSIONS.GENERATE_LICENSE);
+  if (permError) return [];
+
   return prisma.generatedLicense.findMany({
     include: {
       admin: { select: { nickname: true } },
@@ -737,6 +754,9 @@ export async function getLicensesList() {
  * دریافت لیست لاگ‌های فعالیت
  */
 export async function getAuditLogs(skip = 0, take = 50) {
+  const permError = await requirePermission(PERMISSIONS.VIEW_AUDIT);
+  if (permError) return [];
+
   return prisma.auditLog.findMany({
     include: {
       admin: { select: { nickname: true, username: true } },
@@ -751,5 +771,8 @@ export async function getAuditLogs(skip = 0, take = 50) {
  * دریافت تعداد کل لاگ‌ها
  */
 export async function getAuditLogsCount() {
+  const permError = await requirePermission(PERMISSIONS.VIEW_AUDIT);
+  if (permError) return 0;
+
   return prisma.auditLog.count();
 }

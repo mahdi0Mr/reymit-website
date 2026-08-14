@@ -1,6 +1,9 @@
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { Eye, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { PERMISSIONS } from '@/lib/permissions';
+import { requirePermission } from '@/lib/permissions-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +34,9 @@ const getStatusBadge = (status: string) => {
 };
 
 export default async function AdminTicketsPage() {
+  const permError = await requirePermission(PERMISSIONS.MANAGE_TICKETS);
+  if (permError) notFound();
+
   const tickets = await prisma.ticket.findMany({
     orderBy: {
       updatedAt: 'desc', // تیکت‌هایی که اخیراً آپدیت شده‌اند بالاتر باشند

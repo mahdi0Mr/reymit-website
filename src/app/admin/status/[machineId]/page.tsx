@@ -9,6 +9,8 @@ import {
   KeyRound, AppWindow, Coins, ScrollText, Rocket, HardDrive, Send
 } from 'lucide-react';
 import { tryDecrypt } from '@/lib/crypto';
+import { PERMISSIONS } from '@/lib/permissions';
+import { requirePermission } from '@/lib/permissions-server';
 
 // [مهم] این صفحه باید در هر درخواست با دیتای زنده رندر شود
 export const dynamic = 'force-dynamic';
@@ -48,6 +50,9 @@ const formatToman = (amount: number | undefined) =>
   (amount ?? 0).toLocaleString('fa-IR') + ' تومان';
 
 export default async function AppDetailPage({ params }: PageProps) {
+  const permError = await requirePermission(PERMISSIONS.VIEW_STATUS);
+  if (permError) notFound();
+
   // ⚠️ حتماً params را await کن
   const { machineId } = await params;
 

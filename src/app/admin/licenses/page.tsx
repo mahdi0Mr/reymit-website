@@ -1,10 +1,17 @@
 // src/app/admin/licenses/page.tsx
 import { getLicensesList } from "@/app/actions/adminActions";
+import { notFound } from "next/navigation";
+import { PERMISSIONS } from "@/lib/permissions";
+import { requirePermission } from "@/lib/permissions-server";
 import LicenseForm from "./LicenseForm";
+import CopyButton from "./CopyButton";
 
 export const dynamic = "force-dynamic";
 
 export default async function LicensesPage() {
+  const permError = await requirePermission(PERMISSIONS.GENERATE_LICENSE);
+  if (permError) notFound();
+
   const licenses = await getLicensesList();
 
   return (
@@ -57,15 +64,7 @@ export default async function LicensesPage() {
                       <code className="bg-[#1e1e2e] px-2 py-1 rounded text-xs text-gray-300 font-mono truncate max-w-[200px] block" dir="ltr">
                         {lic.licenseKey.substring(0, 40)}...
                       </code>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(lic.licenseKey);
-                          alert("کلید لایسنس کپی شد!");
-                        }}
-                        className="bg-gray-600 text-xs px-2 py-1 rounded hover:bg-gray-500 transition"
-                      >
-                        کپی
-                      </button>
+                      <CopyButton licenseKey={lic.licenseKey} />
                     </div>
                   </td>
                 </tr>

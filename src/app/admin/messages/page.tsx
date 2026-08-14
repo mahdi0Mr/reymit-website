@@ -2,7 +2,10 @@
 // صفحه ارسال پیام به برنامه‌ها + تاریخچه پیام‌های ارسالی
 import prisma from '@/lib/prisma';
 import MessageForm from './MessageForm';
+import { notFound } from 'next/navigation';
 import { MessageSquareText, Send, CheckCircle, Clock, ChevronRight } from 'lucide-react';
+import { PERMISSIONS } from '@/lib/permissions';
+import { requirePermission } from '@/lib/permissions-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,6 +32,9 @@ export default async function AdminMessagesPage({
 }: {
   searchParams?: Promise<{ machineId?: string }>;
 }) {
+  const permError = await requirePermission(PERMISSIONS.SEND_MESSAGES);
+  if (permError) notFound();
+
   const { machineId: initialMachineId } = (await searchParams) ?? {};
 
   // لیست دستگاه‌های شناخته‌شده برای dropdown

@@ -1,7 +1,10 @@
 import prisma from '@/lib/prisma';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 import { MonitorPlay, MonitorX, Monitor, MonitorOff, Server, HardDrive, Eye } from 'lucide-react';
 import AutoRefresh from './AutoRefresh';
+import { PERMISSIONS } from '@/lib/permissions';
+import { requirePermission } from '@/lib/permissions-server';
 
 // [مهم] این صفحه باید در هر درخواست با دیتای زنده رندر شود، نه به‌صورت استاتیک هنگام بیلد
 export const dynamic = 'force-dynamic';
@@ -26,6 +29,9 @@ const getStreamingBadge = (running: boolean) => {
 };
 
 export default async function AdminStatusPage() {
+  const permError = await requirePermission(PERMISSIONS.VIEW_STATUS);
+  if (permError) notFound();
+
   const apps = await prisma.appStatus.findMany({
     orderBy: { lastSeenAt: 'desc' },
   });

@@ -22,3 +22,15 @@ export const PERMISSION_LABELS: Record<PermissionAction, string> = {
   [PERMISSIONS.VIEW_AUDIT]: "مشاهده گزارش فعالیت‌ها",
   [PERMISSIONS.MANAGE_TICKETS]: "مدیریت تیکت‌ها",
 };
+
+// نگاشت مسیرهای منوی ادمین به دسترسی موردنیاز برای نمایش
+// (در لینک‌ها و کارت‌های داشبورد و گارد صفحات استفاده می‌شود)
+export const ROUTE_PERMISSION: Record<string, PermissionAction> = {
+  "/admin/tickets": PERMISSIONS.MANAGE_TICKETS,
+  "/admin/status": PERMISSIONS.VIEW_STATUS,
+  "/admin/messages": PERMISSIONS.SEND_MESSAGES,
+  "/admin/upload": PERMISSIONS.UPLOAD_VERSIONS,
+  "/admin/admins": PERMISSIONS.MANAGE_ADMINS,
+  "/admin/licenses": PERMISSIONS.GENERATE_LICENSE,
+  "/admin/audit": PERMISSIONS.VIEW_AUDIT,
+};

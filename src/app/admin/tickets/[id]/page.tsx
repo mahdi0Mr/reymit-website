@@ -3,6 +3,8 @@ import prisma from '@/lib/prisma';
 import ReplyForm from '../../../components/ReplyForm';
 import { notFound } from 'next/navigation';
 import React from 'react';
+import { PERMISSIONS } from '@/lib/permissions';
+import { requirePermission } from '@/lib/permissions-server';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,6 +26,9 @@ async function getTicketDetails(id: string) {
 }
 
 export default async function ViewTicketPage({ params }: PageProps) {
+  const permError = await requirePermission(PERMISSIONS.MANAGE_TICKETS);
+  if (permError) notFound();
+
   // ⚠️ حتماً params را await کن
   const { id } = await params;
 

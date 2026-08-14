@@ -16,31 +16,49 @@ export async function getCurrentAdmin() {
 }
 
 /**
- * بررسی اینکه آیا ادمین فعلی دسترسی مشخصی دارد یا خیر
- * ادمین بدون هیچ Permission ای سوپر ادمین محسوب می‌شود (دسترسی کامل)
+ * دسترسی‌های ادمین فعلی: آیا سوپر ادمین است + لیست دسترسی‌های صریح.
+ * اگر ادمین پیدا نشود null برمی‌گرداند.
  */
-export async function hasPermission(action: PermissionAction): Promise<boolean> {
+export async function getCurrentAdminAccess(): Promise<{
+  isSuperAdmin: boolean;
+  permissions: PermissionAction[];
+} | null> {
   const adminId = await getCurrentAdmin();
+  if (!adminId) return null;
 
-  if (!adminId) return false;
-
-  // اگر کاربر سوپر ادمین باشد (بدون هیچ permission ذخیره شده) همه دسترسی‌ها را دارد
-  const permissionCount = await prisma.permission.count({
-    where: { adminId },
+  const admin = await prisma.admin.findUnique({
+    where: { id: adminId },
+    select: {
+      isSuperAdmin: true,
+      isActive: true,
+      permissions: { select: { action: true } },
+    },
   });
 
-  if (permissionCount === 0) return true; // سوپر ادمین
+  if (!admin || !admin.isActive) return null;
 
-  // بررسی وجود دسترسی مشخص
-  const perm = await prisma.permission.findUnique({
-    where: { adminId_action: { adminId, action } },
-  });
-
-  return !!perm;
+  return {
+    isSuperAdmin: admin.isSuperAdmin,
+    permissions: admin.permissions.map((p) => p.action as PermissionAction),
+  };
 }
 
 /**
- * بررسی دسترسی و برگرداندن خطا در صورت عدم دسترسی (برای use در server actions)
+ * بررسی اینکه آیا ادمین فعلی دسترسی مشخصی دارد یا خیر
+ * سوپر ادمین (isSuperAdmin) همه دسترسی‌ها را دارد؛
+ * سایر ادمین‌ها فقط دسترسی‌هایی که برایشان ذخیره شده است.
+ */
+export async function hasPermission(action: PermissionAction): Promise<boolean> {
+  const access = await getCurrentAdminAccess();
+  if (!access) return false;
+
+  if (access.isSuperAdmin) return true;
+
+  return access.permissions.includes(action);
+}
+
+/**
+ * بررسی دسترسی و برگرداندن خطا در صورت عدم دسترسی (برای use در server actions و صفحات)
  */
 export async function requirePermission(action: PermissionAction): Promise<string | null> {
   const has = await hasPermission(action);

@@ -1,5 +1,9 @@
 import Link from 'next/link';
 import { adminLogout } from '@/app/actions/adminActions';
+import { ROUTE_PERMISSION } from '@/lib/permissions';
+import { getCurrentAdminAccess } from '@/lib/permissions-server';
+
+export const dynamic = "force-dynamic";
 
 const navItems = [
   { href: "/admin/tickets", label: "مدیریت تیکت‌ها" },
@@ -11,7 +15,18 @@ const navItems = [
   { href: "/admin/audit", label: "گزارش فعالیت‌ها" },
 ];
 
-export default function AdminPanelLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminPanelLayout({ children }: { children: React.ReactNode }) {
+  const access = await getCurrentAdminAccess();
+
+  // فقط منوهایی که ادمین دسترسی دارد نشان داده می‌شود (سوپر ادمین همه را دارد)
+  const visibleItems = access
+    ? navItems.filter((item) => {
+        if (access.isSuperAdmin) return true;
+        const required = ROUTE_PERMISSION[item.href];
+        return !!required && access.permissions.includes(required);
+      })
+    : [];
+
   return (
     <div className="min-h-screen bg-[#181825]">
       <header className="bg-[#2a2a40] border-b border-gray-700">
@@ -20,7 +35,12 @@ export default function AdminPanelLayout({ children }: { children: React.ReactNo
             پنل مدیریت
           </Link>
           <div className="flex items-center gap-4 overflow-x-auto">
-            {navItems.map((item) => (
+            {visibleItems.length === 0 && (
+              <span className="text-gray-500 text-sm whitespace-nowrap">
+                دسترسی فعالی برای این حساب تنظیم نشده است.
+              </span>
+            )}
+            {visibleItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
