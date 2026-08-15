@@ -13,6 +13,7 @@ const navItems = [
   { href: "/admin/admins", label: "مدیریت ادمین‌ها" },
   { href: "/admin/licenses", label: "تولید لایسنس" },
   { href: "/admin/settings", label: "تنظیمات زمان‌بندی" },
+  { href: "/admin/platforms", label: "پلتفرم‌های API" },
   { href: "/admin/audit", label: "گزارش فعالیت‌ها" },
 ];
 

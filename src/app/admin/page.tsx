@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Ticket, UploadCloud, Monitor, MessageSquare, Users, KeyRound, ScrollText } from 'lucide-react';
+import { Ticket, UploadCloud, Monitor, MessageSquare, Users, KeyRound, ScrollText, Settings2, Globe } from 'lucide-react';
 import { ROUTE_PERMISSION } from '@/lib/permissions';
 import { getCurrentAdminAccess } from '@/lib/permissions-server';
 
@@ -33,6 +33,20 @@ const cards = [
     title: "پیام به برنامه‌ها",
     description: "ارسال پیام پاپ‌آپ به یک دستگاه خاص یا همه دستگاه‌ها.",
     hoverColor: "hover:border-yellow-500",
+  },
+  {
+    href: "/admin/settings",
+    icon: <Settings2 className="w-10 h-10 text-slate-400" />,
+    title: "تنظیمات زمان‌بندی",
+    description: "تنظیم بازه‌های بررسی پیام، ارسال وضعیت، آپدیت و دریافت دونیت.",
+    hoverColor: "hover:border-slate-500",
+  },
+  {
+    href: "/admin/platforms",
+    icon: <Globe className="w-10 h-10 text-indigo-400" />,
+    title: "مدیریت پلتفرم‌های API",
+    description: "افزودن، ویرایش، غیرفعال و حذف پلتفرم‌های دریافت دونیت برای هر دستگاه.",
+    hoverColor: "hover:border-indigo-500",
   },
   {
     href: "/admin/admins",

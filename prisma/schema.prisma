@@ -152,3 +152,38 @@ model MachineConfigOverride {
   donationPollInterval Int? // null = از تنظیمات سراسری
   updatedAt            DateTime @updatedAt
 }
+
+// [جدید] کاتالوگ سراسری پلتفرم‌های API (قالب هر پلتفرم)
+// اپلیکیشن با همین تنظیمات بدون کد اختصاصی، دونیت‌ها را از هر API دریافت می‌کند
+model ApiPlatform {
+  id           String   @id @default(cuid())
+  key          String   @unique // شناسه پایدار: "reymit" | "donito" | دلخواه
+  displayName  String   // نام نمایشی (فارسی) در اپلیکیشن
+  apiUrl       String   // آدرس API — توکن با {token} جایگزین می‌شود
+  listPath     String   @default("data") // مسیر نقطه‌ای رسیدن به آرایه دونیت‌ها، مثال: "data" یا "data.data"
+  idField      String   @default("id")
+  nameField    String   @default("name")
+  amountField  String   @default("amount")
+  amountUnit   String   @default("toman") // "toman" | "rial" — اپ به تومان نرمال می‌کند
+  advancedJson String?  // JSON اختیاری (مثلاً header ها) — ادغام و ارسال به اپ
+  enabled      Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  machineLinks MachinePlatform[]
+}
+
+// [جدید] پیوند هر دستگاه به پلتفرم‌های کاتالوگ (فعال‌سازی per-machine)
+model MachinePlatform {
+  id         String     @id @default(cuid())
+  machineId  String
+  platformId String
+  enabled    Boolean    @default(true)
+  sortOrder  Int        @default(0)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  platform   ApiPlatform @relation(fields: [platformId], references: [id], onDelete: Cascade)
+
+  @@unique([machineId, platformId])
+  @@index([machineId])
+}

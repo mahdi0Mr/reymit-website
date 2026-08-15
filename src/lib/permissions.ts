@@ -10,6 +10,7 @@ export const PERMISSIONS = {
   VIEW_AUDIT: "view_audit",
   MANAGE_TICKETS: "manage_tickets",
   MANAGE_SETTINGS: "manage_settings",
+  MANAGE_PLATFORMS: "manage_platforms",
 } as const;
 
 export type PermissionAction = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];
@@ -23,6 +24,7 @@ export const PERMISSION_LABELS: Record<PermissionAction, string> = {
   [PERMISSIONS.VIEW_AUDIT]: "مشاهده گزارش فعالیت‌ها",
   [PERMISSIONS.MANAGE_TICKETS]: "مدیریت تیکت‌ها",
   [PERMISSIONS.MANAGE_SETTINGS]: "مدیریت تنظیمات برنامه",
+  [PERMISSIONS.MANAGE_PLATFORMS]: "مدیریت پلتفرم‌های API",
 };
 
 // نگاشت مسیرهای منوی ادمین به دسترسی موردنیاز برای نمایش
@@ -36,4 +38,5 @@ export const ROUTE_PERMISSION: Record<string, PermissionAction> = {
   "/admin/licenses": PERMISSIONS.GENERATE_LICENSE,
   "/admin/audit": PERMISSIONS.VIEW_AUDIT,
   "/admin/settings": PERMISSIONS.MANAGE_SETTINGS,
+  "/admin/platforms": PERMISSIONS.MANAGE_PLATFORMS,
 };

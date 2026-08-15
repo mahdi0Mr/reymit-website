@@ -3,6 +3,7 @@ import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { logMachineAction } from "@/app/actions/machineActions";
 import { resolveMachineConfig } from "@/lib/machine-config";
+import { resolveMachinePlatforms } from "@/lib/platform-config";
 
 // [جدید] دریافت وضعیت برنامه کنترلر دونیت از سمت اپلیکیشن
 // اپ هر ۶۰ ثانیه و هنگام تغییر وضعیت (شروع/توقف استریم، بستن برنامه) این داده‌ها را ارسال می‌کند
@@ -127,6 +128,9 @@ export async function POST(request: Request) {
     });
     const licenseValid = licenseRow ? !(licenseRow.revoked || licenseRow.expiryDate <= new Date()) : true;
 
+    // [جدید] تعریف‌های پلتفرم‌های API تنظیم‌شده برای این دستگاه
+    const platforms = await resolveMachinePlatforms(machine_id);
+
     // دریافت پیام‌های در انتظار
     const pendingMessages = await prisma.appMessage.findMany({
       where: {
@@ -147,6 +151,8 @@ export async function POST(request: Request) {
       config,
       // [جدید] وضعیت لایسنس
       license_valid: licenseValid,
+      // [جدید] تعریف‌های پلتفرم‌های API برای این دستگاه
+      platforms,
     });
   } catch (err) {
     console.error("Error saving app status:", err);

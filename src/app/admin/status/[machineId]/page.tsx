@@ -14,6 +14,7 @@ import { requirePermission } from '@/lib/permissions-server';
 import MachineLicenseSection from './MachineLicenseSection';
 import MachineLogSection from './MachineLogSection';
 import MachineConfigSection from './MachineConfigSection';
+import MachinePlatformsSection from '../../platforms/MachinePlatformsSection';
 import { toShamsiDateTime, toPersianDigits } from '@/lib/dates';
 
 // [مهم] این صفحه باید در هر درخواست با دیتای زنده رندر شود
@@ -98,6 +99,7 @@ export default async function AppDetailPage({ params }: PageProps) {
   const globalConfig = await prisma.machineConfig.findFirst();
   const overrideConfig = await prisma.machineConfigOverride.findUnique({ where: { machineId } });
   const canManageConfig = (await requirePermission(PERMISSIONS.MANAGE_SETTINGS)) === null;
+  const canManagePlatforms = (await requirePermission(PERMISSIONS.MANAGE_PLATFORMS)) === null;
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -172,6 +174,14 @@ export default async function AppDetailPage({ params }: PageProps) {
             donationPollInterval: overrideConfig.donationPollInterval,
           } : null}
         />
+
+        {/* [جدید] پلتفرم‌های اختصاصی این دستگاه */}
+        <div className="bg-[#2a2a40] p-6 rounded-lg border border-gray-700 mb-6">
+          <MachinePlatformsSection
+            machines={[{ machineId, computerName: app.computerName }]}
+            canEdit={canManagePlatforms}
+          />
+        </div>
 
         {/* اطلاعات پلتفرم */}
         <div className="bg-[#2a2a40] p-6 rounded-lg border border-gray-700 mb-6">
