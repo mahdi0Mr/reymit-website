@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { toShamsiDate } from '@/lib/dates';
 // آیکون Telegram را اضافه کنید
 import { Download, Gem, ShieldCheck, Gamepad2, Palette, MessageCircleMore, Ticket } from 'lucide-react'; 
 // کامپوننت فرم پیگیری را وارد کنید
@@ -33,7 +34,7 @@ async function getVersionData(): Promise<VersionInfo | null> {
 
   return {
     latest_version: latestFile.version,
-    release_date: new Date(latestFile.releaseDate).toLocaleDateString("fa-IR"),
+    release_date: toShamsiDate(latestFile.releaseDate),
     download_url: latestFile.url,
     changelog: changelogArray,
   };

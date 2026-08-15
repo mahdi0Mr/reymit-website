@@ -1,6 +1,7 @@
 // src/app/api/latest-version/route.ts
 import { NextResponse, NextRequest } from "next/server";
 import prisma from "@/lib/prisma";
+import { toShamsiDate } from "@/lib/dates";
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,7 +33,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       latest_version: latestApp.version,
-      release_date: new Date(latestApp.releaseDate).toLocaleDateString("fa-IR"),
+      release_date: toShamsiDate(latestApp.releaseDate),
       download_url: downloadUrl,
       changelog: changelogArray,
     });

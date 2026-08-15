@@ -9,6 +9,7 @@ import { put } from "@vercel/blob";
 import { compareVersions } from "compare-versions";
 import bcrypt from "bcryptjs";
 import { generateLicense } from "@/lib/crypto";
+import { toShamsiDate } from "@/lib/dates";
 import { requirePermission, getCurrentAdmin } from "@/lib/permissions-server";
 import { PERMISSIONS } from "@/lib/permissions";
 import { logAction } from "@/lib/audit";
@@ -184,7 +185,7 @@ async function uploadVersionJson(version: string, changelog: string, url: string
 
   const versionObj = {
     latest_version: version,
-    release_date: new Date().toLocaleDateString("fa-IR"),
+    release_date: toShamsiDate(new Date()),
     download_url: url,
     changelog: changelogArray,
   };
@@ -393,7 +394,7 @@ export async function saveAppVersion(data: AppFileData) {
 
     const versionObj = {
       latest_version: latestDbFile.version,
-      release_date: new Date(latestDbFile.releaseDate).toLocaleDateString("fa-IR"),
+      release_date: toShamsiDate(latestDbFile.releaseDate),
       download_url: latestDbFile.url,
       changelog: changelogArray,
     };

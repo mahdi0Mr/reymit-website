@@ -6,6 +6,7 @@ import { notFound } from 'next/navigation';
 import { MessageSquareText, Send, CheckCircle, Clock, ChevronRight } from 'lucide-react';
 import { PERMISSIONS } from '@/lib/permissions';
 import { requirePermission } from '@/lib/permissions-server';
+import { toShamsiDateTime } from '@/lib/dates';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,7 @@ const statusBadge = (readAt: Date | null) => {
 };
 
 const formatDateTime = (date: Date) =>
-  new Date(date).toLocaleString('fa-IR');
+  toShamsiDateTime(date);
 
 export default async function AdminMessagesPage({
   searchParams,

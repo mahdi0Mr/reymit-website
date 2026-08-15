@@ -1,5 +1,6 @@
 import prisma from "@/lib/prisma";
 import Link from "next/link";
+import { toShamsiDateTime } from "@/lib/dates";
 import { ArrowRight, Clock, CheckCircle, XCircle } from "lucide-react";
 import ClientReplyForm from "./ClientReplyForm";
 import Image from "next/image";
@@ -143,7 +144,7 @@ export default async function TrackTicketPage(props: { params: Promise<{ trackin
                 )}
 
                 <p className="text-xs text-gray-500 mt-2 text-left">
-                  ارسال شده در {new Date(message.createdAt).toLocaleString("fa-IR")}
+                  ارسال شده در {toShamsiDateTime(message.createdAt)}
                 </p>
               </div>
             ))}

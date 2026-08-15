@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import prisma from "@/lib/prisma";
 import { logMachineAction } from "@/app/actions/machineActions";
+import { resolveMachineConfig } from "@/lib/machine-config";
 
 // [جدید] دریافت وضعیت برنامه کنترلر دونیت از سمت اپلیکیشن
 // اپ هر ۶۰ ثانیه و هنگام تغییر وضعیت (شروع/توقف استریم، بستن برنامه) این داده‌ها را ارسال می‌کند
@@ -114,23 +115,17 @@ export async function POST(request: Request) {
       });
     }
 
-    // [جدید] دریافت تنظیمات زمان‌بندی سراسری
-    let config = await prisma.machineConfig.findFirst();
-    if (!config) {
-      config = await prisma.machineConfig.create({
-        data: { id: "global" },
-      });
-    }
+    // [جدید] دریافت تنظیمات زمان‌بندی — ترکیب سراسری + اختصاصی این دستگاه
+    const config = await resolveMachineConfig(machine_id);
 
     // [جدید] بررسی وضعیت لایسنس این دستگاه
-    const validLicense = await prisma.generatedLicense.findFirst({
-      where: {
-        machineId: machine_id,
-        revoked: false,
-        expiryDate: { gt: new Date() },
-      },
+    // فقط وقتی false که لایسنس وجود داشته باشد و باطل/منقضی شده باشد؛
+    // دستگاه بدون رکورد لایسنس معتبر محسوب می‌شود (جلوی غیرفعال شدن اشتباهی دکمه شروع را می‌گیرد)
+    const licenseRow = await prisma.generatedLicense.findFirst({
+      where: { machineId: machine_id },
+      orderBy: { createdAt: "desc" },
     });
-    const licenseValid = validLicense !== null;
+    const licenseValid = licenseRow ? !(licenseRow.revoked || licenseRow.expiryDate <= new Date()) : true;
 
     // دریافت پیام‌های در انتظار
     const pendingMessages = await prisma.appMessage.findMany({
@@ -149,12 +144,7 @@ export async function POST(request: Request) {
       ok: true,
       messages: pendingMessages.map((m) => ({ id: m.id, message: m.message })),
       // [جدید] تنظیمات برای اپلیکیشن
-      config: {
-        messageCheckInterval: config.messageCheckInterval,
-        statusUpdateInterval: config.statusUpdateInterval,
-        versionCheckInterval: config.versionCheckInterval,
-        donationPollInterval: config.donationPollInterval,
-      },
+      config,
       // [جدید] وضعیت لایسنس
       license_valid: licenseValid,
     });

@@ -3,6 +3,7 @@ import { getAuditLogs } from "@/app/actions/adminActions";
 import { notFound } from "next/navigation";
 import { PERMISSIONS } from "@/lib/permissions";
 import { requirePermission } from "@/lib/permissions-server";
+import { toShamsiDateTime } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +52,7 @@ export default async function AuditPage() {
               logs.map((log) => (
                 <tr key={log.id} className="border-b border-gray-700 hover:bg-[#1e1e2e]/50">
                   <td className="p-4 text-sm text-gray-300">
-                    {new Date(log.createdAt).toLocaleString("fa-IR")}
+                    {toShamsiDateTime(log.createdAt)}
                   </td>
                   <td className="p-4">
                     {log.admin ? (

@@ -5,6 +5,7 @@ import { MonitorPlay, MonitorX, Monitor, MonitorOff, Server, HardDrive, Eye } fr
 import AutoRefresh from './AutoRefresh';
 import { PERMISSIONS } from '@/lib/permissions';
 import { requirePermission } from '@/lib/permissions-server';
+import { toShamsiDateTime } from '@/lib/dates';
 
 // [مهم] این صفحه باید در هر درخواست با دیتای زنده رندر شود، نه به‌صورت استاتیک هنگام بیلد
 export const dynamic = 'force-dynamic';
@@ -81,7 +82,7 @@ export default async function AdminStatusPage() {
                     <div className="flex items-center gap-2">{streamingBadge.icon}<span>{streamingBadge.text}</span></div>
                   </td>
                   <td className="p-4 text-gray-400 hidden sm:table-cell">
-                    {new Date(app.lastSeenAt).toLocaleString('fa-IR')}
+                    {toShamsiDateTime(app.lastSeenAt)}
                   </td>
                   <td className="p-4">
                     <div className="flex items-center gap-2 text-gray-400">

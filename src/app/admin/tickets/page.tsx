@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { Eye, Clock, CheckCircle, XCircle } from 'lucide-react';
 import { PERMISSIONS } from '@/lib/permissions';
 import { requirePermission } from '@/lib/permissions-server';
+import { toShamsiDateTime } from '@/lib/dates';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,7 +76,7 @@ export default async function AdminTicketsPage() {
                     </div>
                   </td>
                   <td className="p-4 text-gray-400 hidden sm:table-cell">
-                    {new Date(ticket.updatedAt).toLocaleString('fa-IR')}
+                    {toShamsiDateTime(ticket.updatedAt)}
                   </td>
                   <td className="p-4">
                     <Link

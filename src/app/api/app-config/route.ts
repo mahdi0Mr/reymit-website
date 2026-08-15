@@ -1,23 +1,15 @@
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
+import { resolveMachineConfig } from "@/lib/machine-config";
 
 // GET /api/app-config — بازگرداندن تنظیمات زمان‌بندی برای اپلیکیشن
-export async function GET() {
+// ?machine_id= اختیاری — اگر داده شود، تنظیمات اختصاصی آن دستگاه اعمال می‌شود (در غیر این صورت سراسری)
+export async function GET(request: Request) {
   try {
-    let config = await prisma.machineConfig.findFirst();
+    const { searchParams } = new URL(request.url);
+    const machineId = searchParams.get("machine_id") || null;
 
-    if (!config) {
-      config = await prisma.machineConfig.create({
-        data: { id: "global" },
-      });
-    }
-
-    return NextResponse.json({
-      messageCheckInterval: config.messageCheckInterval,
-      statusUpdateInterval: config.statusUpdateInterval,
-      versionCheckInterval: config.versionCheckInterval,
-      donationPollInterval: config.donationPollInterval,
-    });
+    const config = await resolveMachineConfig(machineId);
+    return NextResponse.json(config);
   } catch (err) {
     console.error("Error fetching config:", err);
     return NextResponse.json({ error: "خطا در دریافت تنظیمات." }, { status: 500 });

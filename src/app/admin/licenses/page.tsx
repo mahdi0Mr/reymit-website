@@ -3,6 +3,7 @@ import { getLicensesList } from "@/app/actions/adminActions";
 import { notFound } from "next/navigation";
 import { PERMISSIONS } from "@/lib/permissions";
 import { requirePermission } from "@/lib/permissions-server";
+import { toShamsiDate, toShamsiDateTime } from "@/lib/dates";
 import LicenseForm from "./LicenseForm";
 import CopyButton from "./CopyButton";
 
@@ -46,14 +47,14 @@ export default async function LicensesPage() {
               licenses.map((lic) => (
                 <tr key={lic.id} className="border-b border-gray-700 hover:bg-[#1e1e2e]/50">
                   <td className="p-4 text-sm text-gray-300">
-                    {new Date(lic.createdAt).toLocaleString("fa-IR")}
+                    {toShamsiDateTime(lic.createdAt)}
                   </td>
                   <td className="p-4 font-mono text-sm text-gray-300" dir="ltr">
                     {lic.machineId}
                   </td>
                   <td className="p-4 text-sm">
                     <span className={lic.expiryDate > new Date() ? "text-green-400" : "text-red-400"}>
-                      {new Date(lic.expiryDate).toLocaleDateString("fa-IR")}
+                      {toShamsiDate(lic.expiryDate)}
                     </span>
                   </td>
                   <td className="p-4 text-sm text-gray-400">

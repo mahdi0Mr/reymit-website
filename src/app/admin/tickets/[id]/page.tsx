@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import React from 'react';
 import { PERMISSIONS } from '@/lib/permissions';
 import { requirePermission } from '@/lib/permissions-server';
+import { toShamsiDateTime } from '@/lib/dates';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +57,7 @@ export default async function ViewTicketPage({ params }: PageProps) {
             {ticket.content}
           </div>
           <p className="text-xs text-gray-500 mt-4">
-            ایجاد شده در: {new Date(ticket.createdAt).toLocaleString('fa-IR')}
+            ایجاد شده در: {toShamsiDateTime(ticket.createdAt)}
           </p>
         </div>
 
@@ -84,7 +85,7 @@ export default async function ViewTicketPage({ params }: PageProps) {
                 {reply.content}
               </div>
               <p className="text-xs text-gray-500 mt-4">
-                {new Date(reply.createdAt).toLocaleString('fa-IR')}
+                {toShamsiDateTime(reply.createdAt)}
               </p>
             </div>
           ))}

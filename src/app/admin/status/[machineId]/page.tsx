@@ -13,6 +13,8 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { requirePermission } from '@/lib/permissions-server';
 import MachineLicenseSection from './MachineLicenseSection';
 import MachineLogSection from './MachineLogSection';
+import MachineConfigSection from './MachineConfigSection';
+import { toShamsiDateTime, toPersianDigits } from '@/lib/dates';
 
 // [مهم] این صفحه باید در هر درخواست با دیتای زنده رندر شود
 export const dynamic = 'force-dynamic';
@@ -49,7 +51,7 @@ interface PageProps {
 
 // تبدیل مبلغ به فرمت خوانا با جداکننده هزارگان
 const formatToman = (amount: number | undefined) =>
-  (amount ?? 0).toLocaleString('fa-IR') + ' تومان';
+  toPersianDigits((amount ?? 0).toLocaleString('en-US')) + ' تومان';
 
 export default async function AppDetailPage({ params }: PageProps) {
   const permError = await requirePermission(PERMISSIONS.VIEW_STATUS);
@@ -91,6 +93,11 @@ export default async function AppDetailPage({ params }: PageProps) {
 
   // وضعیت آنلاین/آفلاین بر اساس آخرین heartbeat
   const isOnline = app.online && Date.now() - app.lastSeenAt.getTime() < ONLINE_THRESHOLD_MS;
+
+  // [جدید] تنظیمات زمان‌بندی سراسری + اختصاصی این دستگاه
+  const globalConfig = await prisma.machineConfig.findFirst();
+  const overrideConfig = await prisma.machineConfigOverride.findUnique({ where: { machineId } });
+  const canManageConfig = (await requirePermission(PERMISSIONS.MANAGE_SETTINGS)) === null;
 
   return (
     <div className="container mx-auto px-4 py-12">
@@ -141,12 +148,30 @@ export default async function AppDetailPage({ params }: PageProps) {
                 نسخه {app.appVersion}
               </span>
             )}
-            <span>آخرین آنلاین: <b className="text-gray-200" dir="ltr">{new Date(app.lastSeenAt).toLocaleString('fa-IR')}</b></span>
+            <span>آخرین آنلاین: <b className="text-gray-200">{toShamsiDateTime(app.lastSeenAt)}</b></span>
           </div>
         </div>
 
         {/* مدیریت لایسنس */}
         <MachineLicenseSection machineId={machineId} initialLicense={license} />
+
+        {/* [جدید] تنظیمات زمان‌بندی اختصاصی این دستگاه */}
+        <MachineConfigSection
+          machineId={machineId}
+          canEdit={canManageConfig}
+          globalConfig={{
+            messageCheckInterval: globalConfig?.messageCheckInterval ?? 60,
+            statusUpdateInterval: globalConfig?.statusUpdateInterval ?? 60,
+            versionCheckInterval: globalConfig?.versionCheckInterval ?? 600,
+            donationPollInterval: globalConfig?.donationPollInterval ?? 5,
+          }}
+          overrideConfig={overrideConfig ? {
+            messageCheckInterval: overrideConfig.messageCheckInterval,
+            statusUpdateInterval: overrideConfig.statusUpdateInterval,
+            versionCheckInterval: overrideConfig.versionCheckInterval,
+            donationPollInterval: overrideConfig.donationPollInterval,
+          } : null}
+        />
 
         {/* اطلاعات پلتفرم */}
         <div className="bg-[#2a2a40] p-6 rounded-lg border border-gray-700 mb-6">
@@ -201,7 +226,7 @@ export default async function AppDetailPage({ params }: PageProps) {
             </p>
             <p className="text-xs text-gray-500 mt-1">
               آخرین heartbeat:
-              <span dir="ltr"> {new Date(app.lastSeenAt).toLocaleString('fa-IR')}</span>
+              <span> {toShamsiDateTime(app.lastSeenAt)}</span>
             </p>
           </div>
           <div className="bg-[#2a2a40] p-5 rounded-lg border border-gray-700">

@@ -6,6 +6,7 @@ import { requirePermission, getCurrentAdmin } from "@/lib/permissions-server";
 import { PERMISSIONS } from "@/lib/permissions";
 import { logAction } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
+import { getBaseConfig, GLOBAL_CONFIG_ID, CONFIG_MIN_VALUES } from "@/lib/machine-config";
 
 // ====== مدیریت لایسنس ======
 
@@ -107,24 +108,33 @@ export async function expireLicense(licenseId: string) {
   }
 }
 
+// [جدید] بازگردانی لایسنس باطل‌شده
+export async function reinstateLicense(licenseId: string) {
+  try {
+    const permError = await requirePermission(PERMISSIONS.GENERATE_LICENSE);
+    if (permError) return { error: permError };
+
+    const license = await prisma.generatedLicense.update({
+      where: { id: licenseId },
+      data: { revoked: false, revokedAt: null },
+    });
+
+    await logAction("reinstate_license", { licenseId, machineId: license.machineId });
+    await logMachineAction(license.machineId, "license_reinstated", { licenseId }, "admin");
+
+    return { ok: true, machineId: license.machineId };
+  } catch (error) {
+    console.error("Error reinstating license:", error);
+    return { error: "خطا در بازگردانی لایسنس." };
+  }
+}
+
 // ====== تنظیمات زمان‌بندی ======
 
 export async function getMachineConfig() {
   "use server";
   try {
-    let config = await prisma.machineConfig.findFirst();
-    if (!config) {
-      config = await prisma.machineConfig.create({
-        data: {
-          id: "global",
-          messageCheckInterval: 60,
-          statusUpdateInterval: 60,
-          versionCheckInterval: 600,
-          donationPollInterval: 5,
-        },
-      });
-    }
-    return config;
+    return await getBaseConfig();
   } catch (error) {
     console.error("Error fetching machine config:", error);
     return null;
@@ -138,33 +148,118 @@ export async function updateMachineConfig(data: {
   donationPollInterval: number;
 }) {
   try {
-    const permError = await requirePermission(PERMISSIONS.MANAGE_ADMINS);
+    const permError = await requirePermission(PERMISSIONS.MANAGE_SETTINGS);
     if (permError) return { error: permError };
 
     // Validate ranges
-    if (data.messageCheckInterval < 5 || data.statusUpdateInterval < 5 ||
-        data.versionCheckInterval < 60 || data.donationPollInterval < 1) {
+    if (data.messageCheckInterval < CONFIG_MIN_VALUES.messageCheckInterval ||
+        data.statusUpdateInterval < CONFIG_MIN_VALUES.statusUpdateInterval ||
+        data.versionCheckInterval < CONFIG_MIN_VALUES.versionCheckInterval ||
+        data.donationPollInterval < CONFIG_MIN_VALUES.donationPollInterval) {
       return { error: "مقادیر وارد شده در محدوده مجاز نیستند." };
     }
 
-    let config = await prisma.machineConfig.findFirst();
-    if (!config) {
-      config = await prisma.machineConfig.create({
-        data: { id: "global", ...data },
-      });
-    } else {
-      config = await prisma.machineConfig.update({
-        where: { id: config.id },
-        data,
-      });
-    }
+    // حسابی مقاوم: اگر رکورد سراسری نبود بساز (id ثابت)
+    await prisma.machineConfig.upsert({
+      where: { id: GLOBAL_CONFIG_ID },
+      update: data,
+      create: { id: GLOBAL_CONFIG_ID, ...data },
+    });
 
     await logAction("update_machine_config", data);
     revalidatePath("/admin/settings");
+    revalidatePath("/admin/status");
     return { ok: true };
   } catch (error) {
     console.error("Error updating machine config:", error);
     return { error: "خطا در بروزرسانی تنظیمات." };
+  }
+}
+
+// ====== تنظیمات اختصاصی هر دستگاه (MachineConfigOverride) ======
+
+export async function getMachineConfigOverride(machineId: string) {
+  try {
+    const permError = await requirePermission(PERMISSIONS.VIEW_STATUS);
+    if (permError) return null;
+
+    if (!machineId) return null;
+    return prisma.machineConfigOverride.findUnique({ where: { machineId } });
+  } catch (error) {
+    console.error("Error fetching machine config override:", error);
+    return null;
+  }
+}
+
+export async function updateMachineConfigOverride(
+  machineId: string,
+  data: {
+    messageCheckInterval: number | null;
+    statusUpdateInterval: number | null;
+    versionCheckInterval: number | null;
+    donationPollInterval: number | null;
+  }
+) {
+  try {
+    const permError = await requirePermission(PERMISSIONS.MANAGE_SETTINGS);
+    if (permError) return { error: permError };
+
+    if (!machineId || machineId.trim().length === 0) {
+      return { error: "شناسه دستگاه معتبر نیست." };
+    }
+
+    // اعتبارسنجی: فیلدهای خالی (null) یعنی بازگشت به سراسری
+    const update = {
+      messageCheckInterval: data.messageCheckInterval ?? null,
+      statusUpdateInterval: data.statusUpdateInterval ?? null,
+      versionCheckInterval: data.versionCheckInterval ?? null,
+      donationPollInterval: data.donationPollInterval ?? null,
+    };
+
+    const valid = (
+      (update.messageCheckInterval === null || update.messageCheckInterval >= CONFIG_MIN_VALUES.messageCheckInterval) &&
+      (update.statusUpdateInterval === null || update.statusUpdateInterval >= CONFIG_MIN_VALUES.statusUpdateInterval) &&
+      (update.versionCheckInterval === null || update.versionCheckInterval >= CONFIG_MIN_VALUES.versionCheckInterval) &&
+      (update.donationPollInterval === null || update.donationPollInterval >= CONFIG_MIN_VALUES.donationPollInterval)
+    );
+    if (!valid) {
+      return { error: "مقادیر وارد شده در محدوده مجاز نیستند." };
+    }
+
+    await prisma.machineConfigOverride.upsert({
+      where: { machineId },
+      update,
+      create: { machineId, ...update },
+    });
+
+    await logAction("update_machine_config_override", { machineId, ...update });
+    await logMachineAction(machineId, "config_changed", { override: true, ...update }, "admin");
+    revalidatePath(`/admin/status/${machineId}`);
+    revalidatePath("/admin/status");
+    return { ok: true };
+  } catch (error) {
+    console.error("Error updating machine config override:", error);
+    return { error: "خطا در ذخیره تنظیمات اختصاصی." };
+  }
+}
+
+export async function resetMachineConfigOverride(machineId: string) {
+  try {
+    const permError = await requirePermission(PERMISSIONS.MANAGE_SETTINGS);
+    if (permError) return { error: permError };
+
+    if (!machineId) return { error: "شناسه دستگاه معتبر نیست." };
+
+    await prisma.machineConfigOverride.deleteMany({ where: { machineId } });
+
+    await logAction("reset_machine_config_override", { machineId });
+    await logMachineAction(machineId, "config_changed", { override: false, reset: true }, "admin");
+    revalidatePath(`/admin/status/${machineId}`);
+    revalidatePath("/admin/status");
+    return { ok: true };
+  } catch (error) {
+    console.error("Error resetting machine config override:", error);
+    return { error: "خطا در حذف تنظیمات اختصاصی." };
   }
 }
 

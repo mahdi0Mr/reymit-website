@@ -4,6 +4,7 @@
 import { useState, useEffect } from "react";
 import { getMachineLogs } from "@/app/actions/machineActions";
 import { ScrollText } from "lucide-react";
+import { toShamsiDateTime } from "@/lib/dates";
 
 interface LogEntry {
   id: string;
@@ -21,6 +22,7 @@ const ACTION_LABELS: Record<string, string> = {
   stream_stop: "توقف استریم",
   license_assigned: "لایسنس تخصیص یافت",
   license_revoked: "لایسنس باطل شد",
+  license_reinstated: "لایسنس بازگردانی شد",
   license_expiry_updated: "تاریخ انقضا تغییر کرد",
   donation_received: "دونیت جدید دریافت شد",
   config_changed: "تنظیمات تغییر کرد",
@@ -66,8 +68,8 @@ export default function MachineLogSection({ machineId }: { machineId: string }) 
                   }`}>
                     {log.source === "admin" ? "ادمین" : "برنامه"}
                   </span>
-                  <span className="text-xs text-gray-500" dir="ltr">
-                    {new Date(log.createdAt).toLocaleString("fa-IR")}
+                  <span className="text-xs text-gray-500">
+                    {toShamsiDateTime(log.createdAt)}
                   </span>
                 </div>
               </div>

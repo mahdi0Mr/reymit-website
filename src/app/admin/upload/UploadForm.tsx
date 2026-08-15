@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { upload } from "@vercel/blob/client";
 import { saveAppVersion, getLastAppFile } from "@/app/actions/adminActions";
 import { getAllAppFiles } from "@/app/actions/machineActions";
+import { toShamsiDate } from "@/lib/dates";
 import { Pencil, Plus, ExternalLink } from "lucide-react";
 
 interface AppFileRecord {
@@ -212,7 +213,7 @@ export default function UploadForm() {
                     <td className="p-3 font-semibold">{v.version}</td>
                     <td className="p-3 text-gray-400 text-sm hidden md:table-cell" dir="ltr">{v.fileName || "—"}</td>
                     <td className="p-3 text-gray-400 text-sm hidden sm:table-cell">
-                      {new Date(v.releaseDate).toLocaleDateString("fa-IR")}
+                      {toShamsiDate(v.releaseDate)}
                     </td>
                     <td className="p-3">
                       <button

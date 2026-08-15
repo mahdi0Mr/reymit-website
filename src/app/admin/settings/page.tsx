@@ -8,7 +8,7 @@ import SettingsForm from "./SettingsForm";
 export const dynamic = "force-dynamic";
 
 export default async function SettingsPage() {
-  const permError = await requirePermission(PERMISSIONS.MANAGE_ADMINS);
+  const permError = await requirePermission(PERMISSIONS.MANAGE_SETTINGS);
   if (permError) notFound();
 
   const config = await getMachineConfig();

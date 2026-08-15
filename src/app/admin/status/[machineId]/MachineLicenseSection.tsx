@@ -2,8 +2,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { assignLicense, updateLicenseExpiry, expireLicense } from "@/app/actions/machineActions";
-import { KeyRound, Plus, Calendar, Ban, ShieldAlert } from "lucide-react";
+import { assignLicense, updateLicenseExpiry, expireLicense, reinstateLicense } from "@/app/actions/machineActions";
+import { KeyRound, Plus, Calendar, Ban, ShieldAlert, RotateCcw } from "lucide-react";
+import { toShamsiDate } from "@/lib/dates";
 
 interface LicenseInfo {
   id: string;
@@ -79,7 +80,7 @@ export default function MachineLicenseSection({
 
   const handleExpire = async () => {
     if (!license) return;
-    if (!confirm("آیا از باطل کردن این لایسنس اطمینان دارید؟ این عملیات قابل بازگشت نیست.")) return;
+    if (!confirm("آیا از باطل کردن این لایسنس اطمینان دارید؟ در صورت پشیمانی می‌توانید آن را از همین‌جا بازگردانی کنید.")) return;
     setLoading(true);
     setError("");
     setMessage("");
@@ -88,6 +89,28 @@ export default function MachineLicenseSection({
       setError(result.error);
     } else {
       setMessage("لایسنس با موفقیت باطل شد.");
+      const { getLicenseByMachineId } = await import("@/app/actions/machineActions");
+      const lic = await getLicenseByMachineId(machineId);
+      if (lic) {
+        setLicense({ ...lic, expiryDate: lic.expiryDate.toISOString(), createdAt: lic.createdAt.toISOString(), revokedAt: lic.revokedAt?.toISOString() ?? null });
+      } else {
+        setLicense(null);
+      }
+    }
+    setLoading(false);
+  };
+
+  const handleReinstate = async () => {
+    if (!license) return;
+    if (!confirm("آیا از بازگردانی (رفع باطل شدن) این لایسنس اطمینان دارید؟")) return;
+    setLoading(true);
+    setError("");
+    setMessage("");
+    const result = await reinstateLicense(license.id);
+    if (result.error) {
+      setError(result.error);
+    } else {
+      setMessage("لایسنس با موفقیت بازگردانی شد.");
       const { getLicenseByMachineId } = await import("@/app/actions/machineActions");
       const lic = await getLicenseByMachineId(machineId);
       if (lic) {
@@ -138,6 +161,15 @@ export default function MachineLicenseSection({
                 >
                   <Calendar size={14} /> تمدید
                 </button>
+                {license.revoked && (
+                  <button
+                    onClick={handleReinstate}
+                    className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg text-sm transition"
+                    disabled={loading}
+                  >
+                    <RotateCcw size={14} /> بازگردانی
+                  </button>
+                )}
                 {!license.revoked && (
                   <button
                     onClick={handleExpire}
@@ -158,8 +190,8 @@ export default function MachineLicenseSection({
               </div>
               <div>
                 <p className="text-sm text-gray-400">تاریخ انقضا:</p>
-                <p className="text-gray-200" dir="ltr">
-                  {new Date(license.expiryDate).toLocaleDateString("fa-IR")}
+                <p className="text-gray-200">
+                  {toShamsiDate(license.expiryDate)}
                 </p>
               </div>
             </div>

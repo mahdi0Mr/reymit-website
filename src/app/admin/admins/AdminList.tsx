@@ -5,6 +5,7 @@ import { useState } from "react";
 import { deleteAdmin, toggleAdminStatus, createAdmin, updateAdmin } from "@/app/actions/adminActions";
 import AdminForm from "./AdminForm";
 import { PERMISSION_LABELS, type PermissionAction } from "@/lib/permissions";
+import { toShamsiDate } from "@/lib/dates";
 import { Pencil, Trash2, UserX, UserCheck, Plus } from "lucide-react";
 
 interface AdminWithPermissions {
@@ -186,7 +187,7 @@ export default function AdminList({ admins: initialAdmins }: { admins: AdminWith
                     </span>
                   </td>
                   <td className="p-4 text-gray-400 text-sm">
-                    {new Date(admin.createdAt).toLocaleDateString("fa-IR")}
+                    {toShamsiDate(admin.createdAt)}
                   </td>
                   <td className="p-4">
                     <div className="flex gap-2">

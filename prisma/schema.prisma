@@ -134,10 +134,21 @@ model MachineConfig {
 model MachineLog {
   id        String   @id @default(cuid())
   machineId String
-  action    String   // online, offline, stream_start, stream_stop, license_assigned, license_revoked, donation_received, config_changed, admin_message_sent
+  action    String   // online, offline, stream_start, stream_stop, license_assigned, license_revoked, donation_received, config_changed, admin_message_sent, license_reinstated
   details   String?  // JSON payload
   source    String   @default("app") // "app" | "admin"
   createdAt DateTime @default(now())
 
   @@index([machineId, createdAt])
+}
+
+// [جدید] تنظیمات زمان‌بندی اختصاصی هر دستگاه
+// همه فیلدها اختیاری‌اند؛ فیلد خالی/null یعنی از تنظیمات سراسری (MachineConfig) استفاده شود
+model MachineConfigOverride {
+  machineId            String   @id
+  messageCheckInterval Int? // null = از تنظیمات سراسری
+  statusUpdateInterval Int? // null = از تنظیمات سراسری
+  versionCheckInterval Int? // null = از تنظیمات سراسری
+  donationPollInterval Int? // null = از تنظیمات سراسری
+  updatedAt            DateTime @updatedAt
 }
